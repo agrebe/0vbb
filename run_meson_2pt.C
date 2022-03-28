@@ -19,6 +19,7 @@ void run_pion_correlator(SpinMat * prop, Vcomplex * corr, int nt, int nx) {
 // wall sink
 void run_pion_correlator_wsink(SpinMat * prop, Vcomplex * corr, int nt, int nx) {
   for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
+#pragma omp parallel for
   for (int t = 0; t < nt; t ++) {
     SpinMat sink [9];
     for (int i = 0; i < nx * nx * nx; i ++) {
