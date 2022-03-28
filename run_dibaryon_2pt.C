@@ -1,0 +1,90 @@
+#include "run_dibaryon_2pt.h"
+#include "gamma_container.h"
+#include "color_tensor.h"
+
+// 2-point correlator for a nucleon
+void run_dineutron_correlator_PP(SpinMat * prop, Vcomplex * corr, int nt, int nx, int block_size) {
+  for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
+#pragma omp parallel for
+  for (int t = 0; t < nt; t ++) {
+    for (int z = 0; z < nx; z += block_size) {
+      for (int y = 0; y < nx; y += block_size) {
+        for (int x = 0; x < nx; x += block_size) {
+          int loc = ((t * nx + z) * nx + y) * nx + x;
+          SpinMat * wilsonMat = prop + 9*loc;
+          SpinMat SCP [9], STCP[9], SPC[9], STPC[9];
+          for (int c = 0; c < 9; c ++) {
+            SCP[c] = wilsonMat[c] * cg5 * pp;
+            STCP[c] = wilsonMat[c].transpose() * cg5 * pp;
+            SPC[c] = wilsonMat[c] * pp * cg5;
+            STPC[c] = wilsonMat[c].transpose() * pp * cg5;
+          }
+          for(int ii=0; ii<1296; ii++) 
+          {
+            const int& i      = color_idx_2[13*ii+0];
+            const int& j      = color_idx_2[13*ii+1];
+            const int& k      = color_idx_2[13*ii+2];
+            const int& l      = color_idx_2[13*ii+3];
+            const int& m      = color_idx_2[13*ii+4];
+            const int& n      = color_idx_2[13*ii+5];
+            const int& ip     = color_idx_2[13*ii+6];
+            const int& jp     = color_idx_2[13*ii+7];
+            const int& kp     = color_idx_2[13*ii+8];
+            const int& lp     = color_idx_2[13*ii+9];
+            const int& mp     = color_idx_2[13*ii+10];
+            const int& np     = color_idx_2[13*ii+11];
+            const double sign = color_idx_2[13*ii+12];
+            corr[t] += sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*j+ip] * STPC[3*n+jp] * SPC[3*m+lp] * STPC[3*k+mp] ) * Trace( SPC[3*i+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*j+lp] * STPC[3*n+mp] * SPC[3*m+ip] * STPC[3*k+jp] ) * Trace( SPC[3*i+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+np] * STPC[3*l+kp] );
+            corr[t] += sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+np] * STPC[3*l+kp] );
+            corr[t] -= sign * Trace( SPC[3*i+np] * STPC[3*l+kp] ) * Trace( SPC[3*j+ip] * STPC[3*n+jp] * SPC[3*m+lp] * STPC[3*k+mp] );
+            corr[t] -= sign * Trace( SPC[3*i+np] * STPC[3*l+kp] ) * Trace( SPC[3*j+lp] * STPC[3*n+mp] * SPC[3*m+ip] * STPC[3*k+jp] );
+            corr[t] -= sign * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+np] * STPC[3*l+kp] );
+            corr[t] -= sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+np] * STPC[3*l+kp] );
+            corr[t] -= sign * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+kp] * STCP[3*j+np] * SCP[3*k+jp] * STPC[3*l+ip] );
+            corr[t] -= sign * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+kp] * STCP[3*j+np] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] -= sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*i+kp] * STCP[3*m+np] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] -= sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*i+kp] * STCP[3*m+np] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] -= sign * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+np] * STPC[3*l+kp] );
+            corr[t] -= sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+kp] * STPC[3*l+np] );
+            corr[t] -= sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+np] * STPC[3*l+kp] );
+            corr[t] -= sign * Trace( SPC[3*m+lp] * STPC[3*n+mp] ) * Trace( SPC[3*i+np] * STCP[3*j+kp] * SCP[3*k+jp] * STPC[3*l+ip] );
+            corr[t] -= sign * Trace( SPC[3*m+ip] * STPC[3*n+jp] ) * Trace( SPC[3*i+np] * STCP[3*j+kp] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] -= sign * Trace( SPC[3*j+lp] * STPC[3*k+mp] ) * Trace( SPC[3*i+np] * STCP[3*m+kp] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] -= sign * Trace( SPC[3*j+ip] * STPC[3*k+jp] ) * Trace( SPC[3*i+np] * STCP[3*m+kp] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+kp] * STCP[3*m+np] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+lp] * STPC[3*n+mp] * SPC[3*m+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+lp] * STPC[3*n+mp] * SPC[3*m+np] * STPC[3*l+kp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*k+jp] * SPC[3*j+np] * STCP[3*m+kp] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+kp] * STCP[3*j+np] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+lp] * STPC[3*k+mp] * SPC[3*j+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+lp] * STPC[3*k+mp] * SPC[3*j+np] * STPC[3*l+kp] );
+            corr[t] += sign * Trace( SPC[3*i+ip] * STPC[3*n+jp] * SPC[3*m+np] * STCP[3*j+kp] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+kp] * STCP[3*j+np] * SCP[3*k+jp] * STCP[3*m+ip] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+kp] * STCP[3*j+np] * SCP[3*k+mp] * STCP[3*m+lp] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+kp] * STCP[3*m+np] * SCP[3*n+jp] * STCP[3*j+ip] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+kp] * STCP[3*m+np] * SCP[3*n+mp] * STCP[3*j+lp] * SCP[3*k+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+ip] * STPC[3*n+jp] * SPC[3*m+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+ip] * STPC[3*n+jp] * SPC[3*m+np] * STPC[3*l+kp] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+kp] * STCP[3*m+np] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*k+mp] * SPC[3*j+np] * STCP[3*m+kp] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+ip] * STPC[3*k+jp] * SPC[3*j+kp] * STPC[3*l+np] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+ip] * STPC[3*k+jp] * SPC[3*j+np] * STPC[3*l+kp] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+kp] * STCP[3*j+np] * SCP[3*k+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+lp] * STPC[3*n+mp] * SPC[3*m+np] * STCP[3*j+kp] * SCP[3*k+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+np] * STCP[3*j+kp] * SCP[3*k+jp] * STCP[3*m+ip] * SCP[3*n+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+np] * STCP[3*j+kp] * SCP[3*k+mp] * STCP[3*m+lp] * SCP[3*n+jp] * STPC[3*l+ip] );
+            corr[t] += sign * Trace( SPC[3*i+np] * STCP[3*m+kp] * SCP[3*n+jp] * STCP[3*j+ip] * SCP[3*k+mp] * STPC[3*l+lp] );
+            corr[t] += sign * Trace( SPC[3*i+np] * STCP[3*m+kp] * SCP[3*n+mp] * STCP[3*j+lp] * SCP[3*k+jp] * STPC[3*l+ip] );
+          }
+        }
+      }
+    }
+  }
+}

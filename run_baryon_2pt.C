@@ -33,6 +33,7 @@ void run_neutron_correlator(SpinMat * prop, Vcomplex * corr, int nt, int nx, int
 // 2-point nucleon correlator with all quarks projected to positive parity
 void run_neutron_correlator_PP(SpinMat * prop, Vcomplex * corr, int nt, int nx, int block_size) {
   for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
+#pragma omp parallel for
   for (int t = 0; t < nt; t ++) {
     for (int z = 0; z < nx; z += block_size) {
       for (int y = 0; y < nx; y += block_size) {
