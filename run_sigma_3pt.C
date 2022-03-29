@@ -12,12 +12,12 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
   // loop over operator insertions
-#pragma omp parallel for
+  #pragma omp parallel for collapse(4)
   for (int t = tm + 2; t <= tp - 2; t ++) {
-    Vcomplex tmp[16];
     for (int z = 0; z < nx; z += block_size_sparsen) {
       for (int y = 0; y < nx; y += block_size_sparsen) {
         for (int x = 0; x < nx; x += block_size_sparsen) {
+          Vcomplex tmp[16];
           int loc = ((t * nx + z) * nx + y) * nx + x;
           SpinMat * S_tm_to_x = wall_prop + 9 * loc;
           SpinMat * S_tp_to_x = point_prop + 9 * loc;
@@ -81,10 +81,11 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
               } //mu
             }} // c1, c2
           } // colors
+          #pragma omp critical
+          for (int i = 0; i < 16; i ++)
+            corr[((tp-tm) * nt + (t-tm)) * nt + i] += tmp[i];
         }
       }
     } // z, y, x
-    for (int i = 0; i < 16; i ++)
-      corr[((tp-tm) * nt + (t-tm)) * nt + i] += tmp[i];
   } // t
 }
