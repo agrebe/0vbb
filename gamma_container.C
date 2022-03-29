@@ -1,8 +1,10 @@
 #include "gamma_container.h"
 
-SpinMat gx, gy, gz, gt, g5, pp, pm, cg5;
+SpinMat id, gx, gy, gz, gt, g5, pp, pm, cg5;
 
 void initialize_gammas() {
+  for (int i = 0; i < 16; i += 5) id.data[i] = Vcomplex(1, 0);
+
   gx.data[3] = Vcomplex(0, -1);
   gx.data[6] = Vcomplex(0, -1);
   gx.data[9] = Vcomplex(0, 1);
