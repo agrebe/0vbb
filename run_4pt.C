@@ -7,13 +7,16 @@ void assemble_Hvec(SpinMat * Hvec,           // sequential propagator
                    int block_size,           // sparsening factor at operator
                    int tm,                   // source time
                    int tp,                   // sink time
-                   int ty,                   // operator time
-                   int xc, int yc, int zc) { // sink position
+                   int ty) {                 // operator time
+  int nx_blocked = nx / block_size;
+  #pragma omp parallel for collapse(3)
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
       for (int x = 0; x < nx; x += block_size) {
-        int idx = (z * nx + y) * nx + x;
-        int loc = ty * nx * nx * nx + idx;
+        int idx = ((z / block_size) * nx_blocked 
+            + (y / block_size)) * nx_blocked 
+            + (x / block_size);
+        int loc = ((ty * nx + z) * nx + y) * nx + x;
         SpinMat * Sl_xz = wall_prop + 9 * loc;
         SpinMat * Sl_wz = point_prop + 9 * loc;
         SpinMat gmu;
@@ -63,15 +66,18 @@ static double nu_prop(int y1, int y2, int y3, int y4, // first point
 void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
                    SpinMat * Hvec,          // seqprop
                    int tx, int ty,          // operator times
-                   int y1, int y2, int y3,  // operator position
                    int nx,                  // spatial extent
                    int block_size,          // sparsening factor at operator
                    int global_sparsening) { // global sparsening factor
+  int nx_blocked = nx / block_size;
   // loop over first operator insertion position
+  #pragma omp parallel for collapse(3)
   for (int y3 = 0; y3 < nx; y3 += block_size) {
     for (int y2 = 0; y2 < nx; y2 += block_size) {
       for (int y1 = 0; y1 < nx; y1 += block_size) {
-        int idy = (y3 * nx + y2) * nx + y1;
+        int idy = ((y3 / block_size) * nx_blocked 
+            + (y2 / block_size)) * nx_blocked 
+            + (y1 / block_size);
         // zero out SnuHz
         for (int mu = 0; mu < 4; mu ++) { 
           for (int c = 0; c < 9; c ++) 
@@ -82,7 +88,9 @@ void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
         for (int x3 = 0; x3 < nx; x3 += block_size) {
           for (int x2 = 0; x2 < nx; x2 += block_size) {
             for (int x1 = 0; x1 < nx; x1 += block_size) {
-              int idx = (x3 * nx + x2) * nx + x1;
+              int idx = ((x3 / block_size) * nx_blocked 
+                  + (x2 / block_size)) * nx_blocked 
+                  + (x1 / block_size);
               double nu_value = nu_prop(y1, y2, y3, ty,
                                         x1, x2, x3, tx,
                                         nx, global_sparsening);

@@ -6,6 +6,7 @@
 #include "run_dibaryon_2pt.h"
 #include "run_sigma_3pt.h"
 #include "run_nnpp_3pt.h"
+#include "run_4pt.h"
 #include "color_tensor.h"
 #include "gamma_container.h"
 
@@ -20,6 +21,11 @@ int main() {
   int block_size_sparsen = 4; // sparsening at operator
   int global_sparsening = 1;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
+  
+  // source and sink time ranges
+  int min_source = 0;
+  int max_source = 0;
+  int tp = 12; // sink time
 
   double dtime0 = omp_get_wtime();
   // initialize gamma matrices and epsilon tensors
@@ -54,9 +60,6 @@ int main() {
   double dtime5 = omp_get_wtime();
 
   // compute sigma 3-point function
-  int min_source = 0;
-  int max_source = 0;
-  int tp = 12; // sink time
   // correlator should store source-sink sep and source-op sep
   // access with corr_sigma_3pt[((tp-tm) * nt + (t-tm) * nt) + i]
   Vcomplex corr_sigma_3pt[nt * nt * 16];
@@ -110,6 +113,34 @@ int main() {
   }
   double dtime7 = omp_get_wtime();
 
+  // compute sigma and nn->pp 4-point functions
+  for (int tm = min_source; tm <= max_source; tm ++) {
+    for (int ty = tm + 2; ty <= tp - 2; ty ++) {
+      // compute sequential propagator through one operator
+      int sparse_vol = (nx / block_size_sparsen);
+      sparse_vol *= sparse_vol * sparse_vol;
+      // loop over source positions
+      for (int zc = 0; zc < nx; zc += block_size) {
+        for (int yc = 0; yc < nx; yc += block_size) {
+          for (int xc = 0; xc < nx; xc += block_size) {
+            SpinMat * Hvec = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
+            assemble_Hvec(Hvec, wall_prop, point_prop, nx, 
+                          block_size_sparsen, tm, tp, ty);
+            for (int tx = tm + 2; tx <= tp - 2; tx ++) {
+              // convolve seqprop with neutrino propagator
+              SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
+              compute_SnuHz(SnuHz, Hvec, tx, ty, nx, block_size_sparsen, global_sparsening);
+              free(SnuHz);
+            }
+            free(Hvec);
+          }
+        }
+      }
+    }
+  }
+
+  double dtime8 = omp_get_wtime();
+
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
   printf("1. Reading propagators:                              %17.10e s\n", dtime2 - dtime1);
@@ -118,5 +149,6 @@ int main() {
   printf("4. Dineutron 2-point correlator:                     %17.10e s\n", dtime5 - dtime4);
   printf("5. Sigma 3-point correlator:                         %17.10e s\n", dtime6 - dtime5);
   printf("6. nn->pp 3-point correlator:                        %17.10e s\n", dtime7 - dtime6);
+  printf("7. Sigma and nn->pp 4-point correlators:             %17.10e s\n", dtime8 - dtime7);
   printf("----------------------------------------------------------------------\n");
 }
