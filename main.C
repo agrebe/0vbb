@@ -14,8 +14,12 @@ int main() {
   int nt = 48;
   int nx = 32;
   int vol = nt * nx * nx * nx;
-  int block_size = 32; // sparsening at sink
+
+  // sparsening factors
+  int block_size = 32;        // sparsening at sink
   int block_size_sparsen = 4; // sparsening at operator
+  int global_sparsening = 1;  // ratio between nx and actual size of lattice
+                              // this is the amount by which props have already been sparsened
 
   double dtime0 = omp_get_wtime();
   // initialize gamma matrices and epsilon tensors

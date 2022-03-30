@@ -3,7 +3,7 @@
 
 #include "spin_mat.h"
 
-extern SpinMat id, gx, gy, gz, gt, g5, pp, pm, cg5;
+extern SpinMat id, gx, gy, gz, gt, g5, pp, pm, pl, cg5;
 
 void initialize_gammas();
 

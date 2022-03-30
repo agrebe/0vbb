@@ -91,10 +91,30 @@ struct SpinMat {
     return C;
   }
 
+  SpinMat operator+=(const SpinMat& B){
+    for (int i = 0; i < 16; i ++)
+      data[i] += B.data[i];
+    return *this;
+  }
+
   SpinMat operator-(const SpinMat& B) const{
     SpinMat C;
     for (int i = 0; i < 16; i ++)
       C.data[i] = data[i] - B.data[i];
+    return C;
+  }
+
+  SpinMat operator*(const double r) const{
+    SpinMat C;
+    for (int i = 0; i < 16; i ++)
+      C.data[i] = data[i] * r;
+    return C;
+  }
+
+  SpinMat operator*(const Vcomplex z) const{
+    SpinMat C;
+    for (int i = 0; i < 16; i ++)
+      C.data[i] = data[i] * z;
     return C;
   }
 
