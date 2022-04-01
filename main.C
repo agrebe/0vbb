@@ -7,14 +7,18 @@
 #include "run_sigma_3pt.h"
 #include "run_nnpp_3pt.h"
 #include "run_4pt.h"
+#include "run_sigma_4pt.h"
 #include "color_tensor.h"
 #include "gamma_container.h"
 
 int main() {
-  // global variables
+  // lattice size variables
   int nt = 48;
   int nx = 32;
   int vol = nt * nx * nx * nx;
+  
+  // electron mass
+  double me = 3.761159784263958e-04;
 
   // sparsening factors
   int block_size = 32;        // sparsening at sink
@@ -114,6 +118,9 @@ int main() {
   double dtime7 = omp_get_wtime();
 
   // compute sigma and nn->pp 4-point functions
+  // correlator should store source-sink sep and both source-op seps
+  // access with corr_sigma_3pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
+  Vcomplex corr_sigma_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
     for (int ty = tm + 2; ty <= tp - 2; ty ++) {
       // compute sequential propagator through one operator
@@ -130,6 +137,13 @@ int main() {
               // convolve seqprop with neutrino propagator
               SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
               compute_SnuHz(SnuHz, Hvec, tx, ty, nx, block_size_sparsen, global_sparsening);
+              Vcomplex * corr_sigma_4pt_index = corr_sigma_4pt + ((tp-tm) * nt + (ty-tm)) * nt + (tx-tm);
+              run_sigma_4pt(wall_prop, point_prop, SnuHz,
+                            corr_sigma_4pt_index,
+                            tx, tp, nx, block_size_sparsen, xc, yc, zc);
+              // rescale based on electron mass
+              *corr_sigma_4pt_index *= exp(me * abs(ty - tx));
+              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_index->real(), corr_sigma_4pt_index->imag());
               free(SnuHz);
             }
             free(Hvec);

@@ -31,7 +31,7 @@ void assemble_Hvec(SpinMat * Hvec,           // sequential propagator
             for (int c2 = 0; c2 < 3; c2 ++)
               for (int c3 = 0; c3 < 3; c3 ++)
                 Hvec[((idx * 4 + mu) * 3 + c1) * 3 + c2]
-                    += g5 * Sl_wz[3*c1+c3].hconj() * gmu * pl * Sl_xz[3*c3+c2];
+                    += g5 * Sl_wz[3*c3+c1].hconj() * gmu * pl * Sl_xz[3*c3+c2];
         }
       }
     }
