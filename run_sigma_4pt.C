@@ -1,14 +1,15 @@
 #include "run_sigma_4pt.h"
 
-void run_sigma_4pt(SpinMat * wall_prop,       // prop from source
-                   SpinMat * point_prop,      // prop from sink
-                   SpinMat * SnuHz,           // seqprop * nu_prop
-                   Vcomplex * corr_sigma_4pt, // output (4-point correlator)
-                   int tx,                    // time of operator
-                   int tp,                    // time of sink
-                   int nx,                    // spatial lattice extent
-                   int block_size,            // sparsening at operator
-                   int xc, int yc, int zc) {  // sink coordinates
+Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
+                       SpinMat * point_prop,      // prop from sink
+                       SpinMat * SnuHz,           // seqprop * nu_prop
+                       int tx,                    // time of operator
+                       int tp,                    // time of sink
+                       int nx,                    // spatial lattice extent
+                       int block_size,            // sparsening at operator
+                       int xc, int yc, int zc) {  // sink coordinates
+  Vcomplex corr_sigma_4pt = Vcomplex();
+
   // extract propagator from source to sink
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * Ss_xw = wall_prop + 9 * loc;
@@ -63,8 +64,9 @@ void run_sigma_4pt(SpinMat * wall_prop,       // prop from source
             tmp -= sign * Trace(SnuHbz[3*i+ip] * CG5SsCG5_xw[3*k+jp] * Hay[3*j+kp]);
           }
         }
-        *corr_sigma_4pt += tmp;
+        corr_sigma_4pt += tmp;
       }
     }
   }
+  return (corr_sigma_4pt);
 }

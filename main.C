@@ -137,13 +137,13 @@ int main() {
               // convolve seqprop with neutrino propagator
               SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
               compute_SnuHz(SnuHz, Hvec, tx, ty, nx, block_size_sparsen, global_sparsening);
-              Vcomplex * corr_sigma_4pt_index = corr_sigma_4pt + ((tp-tm) * nt + (ty-tm)) * nt + (tx-tm);
-              run_sigma_4pt(wall_prop, point_prop, SnuHz,
-                            corr_sigma_4pt_index,
+              Vcomplex corr_sigma_4pt_value
+                          = run_sigma_4pt(wall_prop, point_prop, SnuHz,
                             tx, tp, nx, block_size_sparsen, xc, yc, zc);
               // rescale based on electron mass
-              *corr_sigma_4pt_index *= exp(me * abs(ty - tx));
-              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_index->real(), corr_sigma_4pt_index->imag());
+              corr_sigma_4pt_value *= exp(me * abs(ty - tx));
+              corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_sigma_4pt_value;
+              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
               free(SnuHz);
             }
             free(Hvec);
