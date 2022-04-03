@@ -47,21 +47,30 @@ int main() {
   read_prop(wall_filename, wall_prop, nt, nx);
   read_prop(point_filename, point_prop, nt, nx);
   double dtime2 = omp_get_wtime();
+
+  // output files
+  FILE* pion_2pt = fopen("../results/pion-2pt-WW", "w");
+  FILE* neutron_2pt = fopen("../results/nucleon-2pt-WP", "w");
+  FILE* dineutron_2pt = fopen("../results/dinucleon-2pt-WP", "w");
+  FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
+  FILE* nnpp_3pt = fopen("../results/nnpp-3pt", "w");
+  FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
+  FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
   
   // compute pion correlator (for testing)
   Vcomplex corr [nt];
   run_pion_correlator_wsink(wall_prop, corr, nt, nx);
-  //for (int t = 0; t < nt; t ++) printf("corr[%d] = %f\n", t, corr[t].real());
+  for (int t = 0; t < nt; t ++) fprintf(pion_2pt, "corr[%d] = %f\n", t, corr[t].real());
   double dtime3 = omp_get_wtime();
 
   // compute neutron correlator
   run_neutron_correlator(wall_prop, corr, nt, nx, block_size);
-  //for (int t = 0; t < nt; t ++) printf("corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
+  for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
   double dtime4 = omp_get_wtime();
 
   // compute dineutron correlator
   run_dineutron_correlator_PP(wall_prop, corr, nt, nx, block_size);
-  //for (int t = 0; t < nt; t ++) printf("corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
+  for (int t = 0; t < nt; t ++) fprintf(dineutron_2pt, "corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
   double dtime5 = omp_get_wtime();
 
   // compute sigma 3-point function
@@ -79,16 +88,14 @@ int main() {
         }
       }
     }
-    /*
     for (int t = tm + 2; t <= tp - 2; t ++) {
-      printf("%d %d %d ", tp-tm, tm, t-tm);
+      fprintf(sigma_3pt, "%d %d %d ", tp-tm, tm, t-tm);
       for (int i = 0; i < 16; i ++) {
         Vcomplex element = corr_sigma_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
-        printf("%.10e %.10e ", element.real(), element.imag());
+        fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
       }
-      printf("\n");
+      fprintf(sigma_3pt, "\n");
     }
-    */
   }
   double dtime6 = omp_get_wtime();
 
@@ -108,12 +115,12 @@ int main() {
       }
     }
     for (int t = tm + 2; t <= tp - 2; t ++) {
-      printf("%d %d %d ", tp-tm, tm, t-tm);
+      fprintf(nnpp_3pt, "%d %d %d ", tp-tm, tm, t-tm);
       for (int i = 0; i < 16; i ++) {
         Vcomplex element = corr_nnpp_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
-        printf("%.10e %.10e ", element.real(), element.imag());
+        fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
       }
-      printf("\n");
+      fprintf(nnpp_3pt, "\n");
     }
   }
   double dtime7 = omp_get_wtime();
@@ -148,11 +155,11 @@ int main() {
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
               corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_sigma_4pt_value;
-              //printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+              fprintf(sigma_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
               
               corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
               corr_nnpp_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_nnpp_4pt_value;
-              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
+              fprintf(nnpp_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
               free(SnuHz);
             }
             free(Hvec);
@@ -163,6 +170,15 @@ int main() {
   }
 
   double dtime8 = omp_get_wtime();
+  
+  // close files
+  fclose(pion_2pt);
+  fclose(neutron_2pt);
+  fclose(dineutron_2pt);
+  fclose(sigma_3pt);
+  fclose(nnpp_3pt);
+  fclose(sigma_4pt);
+  fclose(nnpp_4pt);
 
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
