@@ -8,6 +8,7 @@
 #include "run_nnpp_3pt.h"
 #include "run_4pt.h"
 #include "run_sigma_4pt.h"
+#include "run_nnpp_4pt.h"
 #include "color_tensor.h"
 #include "gamma_container.h"
 
@@ -121,6 +122,7 @@ int main() {
   // correlator should store source-sink sep and both source-op seps
   // access with corr_sigma_3pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
   Vcomplex corr_sigma_4pt[nt * nt * nt];
+  Vcomplex corr_nnpp_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
     for (int ty = tm + 2; ty <= tp - 2; ty ++) {
       // compute sequential propagator through one operator
@@ -140,10 +142,17 @@ int main() {
               Vcomplex corr_sigma_4pt_value
                           = run_sigma_4pt(wall_prop, point_prop, SnuHz,
                             tx, tp, nx, block_size_sparsen, xc, yc, zc);
+              Vcomplex corr_nnpp_4pt_value
+                          = run_nnpp_4pt(wall_prop, point_prop, SnuHz,
+                            tx, tp, nx, block_size_sparsen, xc, yc, zc);
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
               corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_sigma_4pt_value;
-              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+              //printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+              
+              corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
+              corr_nnpp_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_nnpp_4pt_value;
+              printf("%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
               free(SnuHz);
             }
             free(Hvec);
