@@ -22,7 +22,7 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 32;        // sparsening at sink
+  int block_size = 8;         // sparsening at sink
   int block_size_sparsen = 4; // sparsening at operator
   int global_sparsening = 1;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
@@ -60,18 +60,21 @@ int main() {
   // compute pion correlator (for testing)
   Vcomplex corr [nt];
   run_pion_correlator_wsink(wall_prop, corr, nt, nx);
-  for (int t = 0; t < nt; t ++) fprintf(pion_2pt, "corr[%d] = %f\n", t, corr[t].real());
+  for (int t = 0; t < nt; t ++) fprintf(pion_2pt, "%d %.10e\n", t, corr[t].real());
   double dtime3 = omp_get_wtime();
 
   // compute neutron correlator
   run_neutron_correlator(wall_prop, corr, nt, nx, block_size);
-  for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
+  for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
   double dtime4 = omp_get_wtime();
 
   // compute dineutron correlator
   run_dineutron_correlator_PP(wall_prop, corr, nt, nx, block_size);
-  for (int t = 0; t < nt; t ++) fprintf(dineutron_2pt, "corr[%d] = %f + %fi\n", t, corr[t].real(), corr[t].imag());
+  for (int t = 0; t < nt; t ++) fprintf(dineutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
   double dtime5 = omp_get_wtime();
+  
+  // TODO: Remove the following line (for testing only)
+  block_size = 32;         // sparsening at sink
 
   // compute sigma 3-point function
   // correlator should store source-sink sep and source-op sep
