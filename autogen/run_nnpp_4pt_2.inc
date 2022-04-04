@@ -1,576 +1,79 @@
-tmp[0] -= sign * Trace(cgs * S_exp_4);
-tmp[1] += sign * Trace(cgs * S_exp_7) * Trace(S_exp_8);
-tmp[2] += sign * Trace(cgs * S_exp_9) * Trace(S_exp_12);
-
-tmp[4] -= sign * Trace(cgs * S_exp_16);
-
-tmp[6] -= sign * Trace(cgs * S_exp_21);
-tmp[7] -= sign * Trace(cgs * S_exp_25);
-tmp[8] += sign * Trace(cgs * S_exp_9) * Trace(S_exp_27);
-tmp[9] += sign * Trace(cgs * S_exp_9) * Trace(S_exp_30);
-tmp[10] -= sign * Trace(cgs * S_exp_33);
-tmp[11] -= sign * Trace(cgs * S_exp_36);
-tmp[12] -= sign * Trace(cgs * S_exp_41);
-
-
-tmp[15] -= sign * Trace(cgs * S_exp_46);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-tmp[48] -= sign * Trace(cgs * S_exp_50);
-tmp[49] -= sign * Trace(cgs * S_exp_53);
-tmp[50] -= sign * Trace(cgs * S_exp_58);
-
-tmp[52] -= sign * Trace(cgs * S_exp_60);
-
-
-
-tmp[56] -= sign * Trace(cgs * S_exp_64);
-tmp[57] -= sign * Trace(cgs * S_exp_68);
-tmp[58] -= sign * Trace(cgs * S_exp_70);
-tmp[59] -= sign * Trace(cgs * S_exp_72);
-
-
-tmp[62] -= sign * Trace(cgs * S_exp_77);
-tmp[63] += sign * Trace(cgs * S_exp_78) * Trace(S_exp_81);
-tmp[64] += sign * Trace(cgs * S_exp_82) * Trace(S_exp_83);
-
-
-
-tmp[68] -= sign * Trace(cgs * S_exp_85);
-
-tmp[70] += sign * Trace(cgs * S_exp_86) * Trace(S_exp_83);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-tmp[96] -= sign * Trace(cgs * S_exp_88);
-tmp[97] += sign * Trace(cgs * S_exp_89) * Trace(S_exp_91);
-tmp[98] -= sign * Trace(cgs * S_exp_93);
-
-tmp[100] += sign * Trace(cgs * S_exp_89) * Trace(S_exp_96);
-
-
-
-tmp[104] -= sign * Trace(cgs * S_exp_98);
-tmp[105] += sign * Trace(cgs * S_exp_99) * Trace(S_exp_100);
-tmp[106] += sign * Trace(cgs * S_exp_89) * Trace(S_exp_102);
-tmp[107] -= sign * Trace(cgs * S_exp_105);
-
-
-tmp[110] -= sign * Trace(cgs * S_exp_107);
-tmp[111] -= sign * Trace(cgs * S_exp_112);
-
-tmp[113] -= sign * Trace(cgs * S_exp_115);
-
-
-tmp[116] += sign * Trace(cgs * S_exp_89) * Trace(S_exp_117);
-tmp[117] -= sign * Trace(cgs * S_exp_122);
-
-tmp[119] += sign * Trace(cgs * S_exp_99) * Trace(S_exp_123);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-tmp[144] += sign * Trace(S_exp_124) * Trace(cgs * S_exp_127);
-tmp[145] -= sign * Trace(S_exp_132);
-tmp[146] -= sign * Trace(S_exp_136);
-
-tmp[148] += sign * Trace(S_exp_138) * Trace(cgs * S_exp_139);
-
-tmp[150] -= sign * Trace(S_exp_144);
-tmp[151] -= sign * Trace(S_exp_148);
-tmp[152] -= sign * Trace(S_exp_150);
-tmp[153] -= sign * Trace(S_exp_154);
-tmp[154] += sign * Trace(S_exp_155) * Trace(cgs * S_exp_139);
-tmp[155] += sign * Trace(S_exp_156) * Trace(cgs * S_exp_139);
-tmp[156] -= sign * Trace(S_exp_161);
-
-
-tmp[159] -= sign * Trace(S_exp_166);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-tmp[192] += sign * Trace(S_exp_124) * Trace(S_exp_169);
-tmp[193] -= sign * Trace(S_exp_172);
-tmp[194] -= sign * Trace(S_exp_176);
-
-tmp[196] += sign * Trace(S_exp_138) * Trace(S_exp_177);
-
-
-
-tmp[200] -= sign * Trace(S_exp_179);
-tmp[201] -= sign * Trace(S_exp_183);
-tmp[202] += sign * Trace(S_exp_155) * Trace(S_exp_177);
-tmp[203] += sign * Trace(S_exp_156) * Trace(S_exp_177);
-
-
-tmp[206] += sign * Trace(S_exp_184) * Trace(S_exp_169);
-tmp[207] -= sign * Trace(S_exp_189);
-tmp[208] -= sign * Trace(S_exp_184) * Trace(S_exp_177) * Trace(S_exp_83);
-
-
-
-tmp[212] -= sign * Trace(S_exp_191);
-tmp[213] -= sign * Trace(S_exp_196);
-tmp[214] += sign * Trace(S_exp_198) * Trace(S_exp_83);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-tmp[240] += sign * Trace(S_exp_124) * Trace(S_exp_201);
-tmp[241] -= sign * Trace(S_exp_205);
-tmp[242] -= sign * Trace(S_exp_209);
-
-tmp[244] -= sign * Trace(S_exp_212);
-
-
-
-tmp[248] -= sign * Trace(S_exp_214);
-tmp[249] += sign * Trace(S_exp_215) * Trace(S_exp_100);
-tmp[250] -= sign * Trace(S_exp_217);
-tmp[251] -= sign * Trace(S_exp_221);
-
-
-tmp[254] += sign * Trace(S_exp_184) * Trace(S_exp_201);
-tmp[255] -= sign * Trace(S_exp_226);
-
-tmp[257] -= sign * Trace(S_exp_230);
-
-
-tmp[260] -= sign * Trace(S_exp_231);
-tmp[261] -= sign * Trace(S_exp_236);
-
-tmp[263] += sign * Trace(S_exp_215) * Trace(S_exp_123);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+tmp[0] -= sign * Trace(cgs * P_exp_0[27*a+9*j+3*c+g] * SnuHbz_CG[3*b+k] * T_exp_0[243*e+81*l+27*f+9*h+3*d+i]);
+tmp[1] += sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_0[243*e+81*l+27*f+9*h+3*d+i]) * Trace(SnuHbz_CG[3*b+j] * Sl_xw_T_CG[3*c+g]);
+tmp[2] += sign * Trace(cgs * P_exp_1[27*a+9*h+3*d+i]) * Trace(SnuHbz_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g]);
+tmp[4] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g] * SnuHbz_CG[3*b+h] * Sl_xw_T[3*d+i]);
+tmp[6] -= sign * Trace(cgs * T_exp_2[243*a+81*j+27*f+9*g+3*e+l] * SnuHbz_T_CG[3*b+k] * P_exp_2[27*c+9*h+3*d+i]);
+tmp[7] -= sign * Trace(cgs * T_exp_2[243*a+81*k+27*e+9*l+3*f+g] * SnuHbz_T_CG[3*b+j] * P_exp_2[27*c+9*h+3*d+i]);
+tmp[8] += sign * Trace(cgs * P_exp_1[27*a+9*h+3*d+i]) * Trace(SnuHbz_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j]);
+tmp[9] += sign * Trace(cgs * P_exp_1[27*a+9*h+3*d+i]) * Trace(SnuHbz_CG[3*b+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k]);
+tmp[10] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j] * SnuHbz_CG[3*b+h] * Sl_xw_T[3*d+i]);
+tmp[11] -= sign * Trace(cgs * Sl_xyw_CG[3*a+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k] * SnuHbz_CG[3*b+h] * Sl_xw_T[3*d+i]);
+tmp[12] -= sign * Trace(cgs * T_exp_2[243*a+81*g+27*f+9*j+3*e+l] * SnuHbz_T_CG[3*b+k] * P_exp_2[27*c+9*h+3*d+i]);
+tmp[15] -= sign * Trace(cgs * Sl_xyw_CG[3*a+g] * SnuHbz_T_CG[3*b+j] * Sl_xw_CG[3*c+k] * T_exp_0[243*e+81*l+27*f+9*h+3*d+i]);
+tmp[48] -= sign * Trace(cgs * Sl_xyw_CG[3*a+j] * T_exp_1[243*c+81*g+27*b+9*i+3*f+h] * Sl_xw_CG[3*e+l] * SnuHbz_T[3*d+k]);
+tmp[49] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*h+3*b+i] * Sl_xw_CG[3*c+g] * SnuHbz_T[3*d+j]);
+tmp[50] -= sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_1[243*b+81*i+27*c+9*g+3*f+j] * Sl_xw_CG[3*e+l] * SnuHbz_T[3*d+k]);
+tmp[52] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g] * Sl_xw_CG[3*b+i] * SnuHbz_T[3*d+h]);
+tmp[56] -= sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_1[243*b+81*i+27*c+9*j+3*f+g] * Sl_xw_CG[3*e+l] * SnuHbz_T[3*d+k]);
+tmp[57] -= sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_1[243*b+81*i+27*c+9*k+3*e+l] * Sl_xw_CG[3*f+g] * SnuHbz_T[3*d+j]);
+tmp[58] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j] * Sl_xw_CG[3*b+i] * SnuHbz_T[3*d+h]);
+tmp[59] -= sign * Trace(cgs * Sl_xyw_CG[3*a+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k] * Sl_xw_CG[3*b+i] * SnuHbz_T[3*d+h]);
+tmp[62] -= sign * Trace(cgs * Sl_xyw_CG[3*a+g] * T_exp_1[243*c+81*j+27*b+9*i+3*f+h] * Sl_xw_CG[3*e+l] * SnuHbz_T[3*d+k]);
+tmp[63] += sign * Trace(cgs * Sl_xyw_CG[3*a+g] * SnuHbz_T[3*d+j]) * Trace(Sl_xw_CG[3*b+i] * T_exp_1[243*f+81*h+27*e+9*l+3*c+k]);
+tmp[64] += sign * Trace(cgs * T_exp_2[243*a+81*g+27*c+9*j+3*b+i] * SnuHbz_T[3*d+h]) * Trace(P_exp_3[27*e+9*l+3*f+k]);
+tmp[68] -= sign * Trace(cgs * Sl_xyw_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*h+3*b+i] * Sl_xw_CG[3*c+j] * SnuHbz_T[3*d+g]);
+tmp[70] += sign * Trace(cgs * T_exp_2[243*a+81*h+27*b+9*i+3*c+j] * SnuHbz_T[3*d+g]) * Trace(P_exp_3[27*e+9*l+3*f+k]);
+tmp[96] -= sign * Trace(cgs * Sl_xyw_CG[3*a+j] * T_exp_1[243*c+81*g+27*b+9*i+3*f+h] * SnuHbz_CG[3*e+k] * Sl_xw_T[3*d+l]);
+tmp[97] += sign * Trace(cgs * P_exp_1[27*a+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+j] * T_exp_1[243*c+81*g+27*b+9*i+3*f+h]);
+tmp[98] -= sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_1[243*b+81*i+27*c+9*g+3*f+j] * SnuHbz_CG[3*e+k] * Sl_xw_T[3*d+l]);
+tmp[100] += sign * Trace(cgs * P_exp_1[27*a+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+h] * T_exp_1[243*b+81*i+27*c+9*g+3*f+j]);
+tmp[104] -= sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_1[243*b+81*i+27*c+9*j+3*f+g] * SnuHbz_CG[3*e+k] * Sl_xw_T[3*d+l]);
+tmp[105] += sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+j] * Sl_xw_T_CG[3*f+g]);
+tmp[106] += sign * Trace(cgs * P_exp_1[27*a+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+h] * T_exp_1[243*b+81*i+27*c+9*j+3*f+g]);
+tmp[107] -= sign * Trace(cgs * P_exp_0[27*a+9*j+3*f+g] * SnuHbz_CG[3*e+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]);
+tmp[110] -= sign * Trace(cgs * Sl_xyw_CG[3*a+g] * T_exp_1[243*c+81*j+27*b+9*i+3*f+h] * SnuHbz_CG[3*e+k] * Sl_xw_T[3*d+l]);
+tmp[111] -= sign * Trace(cgs * Sl_xyw_CG[3*a+g] * SnuHbz_T_CG[3*e+j] * Sl_xw_CG[3*f+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]);
+tmp[113] -= sign * Trace(cgs * P_exp_0[27*a+9*g+3*f+j] * SnuHbz_CG[3*e+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]);
+tmp[116] += sign * Trace(cgs * P_exp_1[27*a+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+g] * T_exp_1[243*c+81*j+27*b+9*i+3*f+h]);
+tmp[117] -= sign * Trace(cgs * Sl_xyw_CG[3*a+j] * SnuHbz_T_CG[3*e+g] * Sl_xw_CG[3*f+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]);
+tmp[119] += sign * Trace(cgs * Sl_xyw_CG[3*a+h] * T_exp_0[243*b+81*i+27*c+9*k+3*d+l]) * Trace(SnuHbz_CG[3*e+g] * Sl_xw_T_CG[3*f+j]);
+tmp[144] += sign * Trace(P_exp_0[27*b+9*j+3*c+g]) * Trace(cgs * SnuHbz_CG[3*a+k] * T_exp_0[243*e+81*l+27*f+9*h+3*d+i]);
+tmp[145] -= sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*h+3*d+i] * SnuHbz_CG[3*a+j] * Sl_xw_T_CG[3*c+g]);
+tmp[146] -= sign * Trace(P_exp_0[27*b+9*h+3*d+i] * SnuHbz_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g]);
+tmp[148] += sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g]) * Trace(cgs * SnuHbz_CG[3*a+h] * Sl_xw_T[3*d+i]);
+tmp[150] -= sign * Trace(T_exp_2[243*b+81*j+27*f+9*g+3*e+l] * SnuHbz_T_CG[3*a+k] * P_exp_3[27*d+9*i+3*c+h]);
+tmp[151] -= sign * Trace(T_exp_2[243*b+81*k+27*e+9*l+3*f+g] * SnuHbz_T_CG[3*a+j] * P_exp_3[27*d+9*i+3*c+h]);
+tmp[152] -= sign * Trace(P_exp_0[27*b+9*h+3*d+i] * SnuHbz_CG[3*a+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j]);
+tmp[153] -= sign * Trace(P_exp_0[27*b+9*h+3*d+i] * SnuHbz_CG[3*a+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k]);
+tmp[154] += sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j]) * Trace(cgs * SnuHbz_CG[3*a+h] * Sl_xw_T[3*d+i]);
+tmp[155] += sign * Trace(Sl_xyw_CG[3*b+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k]) * Trace(cgs * SnuHbz_CG[3*a+h] * Sl_xw_T[3*d+i]);
+tmp[156] -= sign * Trace(T_exp_2[243*b+81*g+27*f+9*j+3*e+l] * SnuHbz_T_CG[3*a+k] * P_exp_3[27*d+9*i+3*c+h]);
+tmp[159] -= sign * Trace(Sl_xyw_CG[3*b+g] * SnuHbz_T_CG[3*a+j] * Sl_xw_CG[3*d+i] * T_exp_1[243*f+81*h+27*e+9*l+3*c+k]);
+tmp[192] += sign * Trace(P_exp_0[27*b+9*j+3*c+g]) * Trace(SnuHbz_CG[3*d+k] * T_exp_1[243*e+81*l+27*f+9*h+3*a+i]);
+tmp[193] -= sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*h+3*a+i] * SnuHbz_CG[3*d+j] * Sl_xw_T_CG[3*c+g]);
+tmp[194] -= sign * Trace(P_exp_0[27*b+9*h+3*a+i] * SnuHbz_CG[3*d+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g]);
+tmp[196] += sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*j+3*c+g]) * Trace(SnuHbz_CG[3*d+h] * Sl_xw_T_CG[3*a+i]);
+tmp[200] -= sign * Trace(P_exp_0[27*b+9*h+3*a+i] * SnuHbz_CG[3*d+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j]);
+tmp[201] -= sign * Trace(P_exp_0[27*b+9*h+3*a+i] * SnuHbz_CG[3*d+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k]);
+tmp[202] += sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*g+3*c+j]) * Trace(SnuHbz_CG[3*d+h] * Sl_xw_T_CG[3*a+i]);
+tmp[203] += sign * Trace(Sl_xyw_CG[3*b+j] * T_exp_1[243*f+81*g+27*e+9*l+3*c+k]) * Trace(SnuHbz_CG[3*d+h] * Sl_xw_T_CG[3*a+i]);
+tmp[206] += sign * Trace(P_exp_0[27*b+9*g+3*c+j]) * Trace(SnuHbz_CG[3*d+k] * T_exp_1[243*e+81*l+27*f+9*h+3*a+i]);
+tmp[207] -= sign * Trace(Sl_xyw_CG[3*b+g] * SnuHbz_T_CG[3*d+j] * Sl_xw_CG[3*a+i] * T_exp_1[243*f+81*h+27*e+9*l+3*c+k]);
+tmp[208] -= sign * Trace(P_exp_0[27*b+9*g+3*c+j]) * Trace(SnuHbz_CG[3*d+h] * Sl_xw_T_CG[3*a+i]) * Trace(P_exp_3[27*e+9*l+3*f+k]);
+tmp[212] -= sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*e+81*l+27*f+9*h+3*a+i] * SnuHbz_CG[3*d+g] * Sl_xw_T_CG[3*c+j]);
+tmp[213] -= sign * Trace(Sl_xyw_CG[3*b+j] * SnuHbz_T_CG[3*d+g] * Sl_xw_CG[3*a+i] * T_exp_1[243*f+81*h+27*e+9*l+3*c+k]);
+tmp[214] += sign * Trace(P_exp_0[27*b+9*h+3*a+i] * SnuHbz_CG[3*d+g] * Sl_xw_T_CG[3*c+j]) * Trace(P_exp_3[27*e+9*l+3*f+k]);
+tmp[240] += sign * Trace(P_exp_0[27*b+9*j+3*c+g]) * Trace(SnuHbz_CG[3*e+k] * T_exp_1[243*d+81*l+27*a+9*i+3*f+h]);
+tmp[241] -= sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*d+81*l+27*a+9*i+3*f+h] * SnuHbz_CG[3*e+j] * Sl_xw_T_CG[3*c+g]);
+tmp[242] -= sign * Trace(T_exp_2[243*b+81*h+27*a+9*i+3*d+l] * SnuHbz_T_CG[3*e+k] * P_exp_3[27*f+9*j+3*c+g]);
+tmp[244] -= sign * Trace(T_exp_2[243*b+81*k+27*d+9*l+3*a+i] * SnuHbz_T_CG[3*e+h] * P_exp_3[27*f+9*j+3*c+g]);
+tmp[248] -= sign * Trace(T_exp_2[243*b+81*h+27*a+9*i+3*d+l] * SnuHbz_T_CG[3*e+k] * P_exp_3[27*f+9*g+3*c+j]);
+tmp[249] += sign * Trace(Sl_xyw_CG[3*b+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]) * Trace(SnuHbz_CG[3*e+j] * Sl_xw_T_CG[3*f+g]);
+tmp[250] -= sign * Trace(T_exp_2[243*b+81*k+27*d+9*l+3*a+i] * SnuHbz_T_CG[3*e+h] * P_exp_3[27*f+9*g+3*c+j]);
+tmp[251] -= sign * Trace(P_exp_0[27*b+9*j+3*f+g] * SnuHbz_CG[3*e+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]);
+tmp[254] += sign * Trace(P_exp_0[27*b+9*g+3*c+j]) * Trace(SnuHbz_CG[3*e+k] * T_exp_1[243*d+81*l+27*a+9*i+3*f+h]);
+tmp[255] -= sign * Trace(Sl_xyw_CG[3*b+g] * SnuHbz_T_CG[3*e+j] * Sl_xw_CG[3*f+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]);
+tmp[257] -= sign * Trace(P_exp_0[27*b+9*g+3*f+j] * SnuHbz_CG[3*e+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]);
+tmp[260] -= sign * Trace(Sl_xyw_CG[3*b+k] * T_exp_1[243*d+81*l+27*a+9*i+3*f+h] * SnuHbz_CG[3*e+g] * Sl_xw_T_CG[3*c+j]);
+tmp[261] -= sign * Trace(Sl_xyw_CG[3*b+j] * SnuHbz_T_CG[3*e+g] * Sl_xw_CG[3*f+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]);
+tmp[263] += sign * Trace(Sl_xyw_CG[3*b+h] * T_exp_1[243*a+81*i+27*d+9*l+3*c+k]) * Trace(SnuHbz_CG[3*e+g] * Sl_xw_T_CG[3*f+j]);

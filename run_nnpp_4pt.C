@@ -60,6 +60,7 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
             SnuHbz_CG[c] = SnuHbz[c] * cgs;
             SnuHbz_T_CG[c] = SnuHbz_T[c] * cgs;
           }
+          #include "autogen/run_nnpp_4pt_1.inc"
           for(int ii=0; ii<1296; ii++) 
           {
             const int& a      = color_idx_2[13*ii+0];
@@ -75,7 +76,6 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
             const int& k      = color_idx_2[13*ii+10];
             const int& l      = color_idx_2[13*ii+11];
             const double sign = color_idx_2[13*ii+12];
-            #include "autogen/run_nnpp_4pt_1.inc"
             #include "autogen/run_nnpp_4pt_2.inc"
           }
         }
