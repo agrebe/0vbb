@@ -118,6 +118,18 @@ struct SpinMat {
     return C;
   }
 
+  SpinMat operator*=(const double r){
+    for (int i = 0; i < 16; i ++)
+      data[i] *= r;
+    return *this;
+  }
+
+  SpinMat operator*=(const Vcomplex z){
+    for (int i = 0; i < 16; i ++)
+      data[i] *= z;
+    return *this;
+  }
+
   SpinMat transpose() {
     SpinMat A;
     for (int a = 0; a < 4; a ++)

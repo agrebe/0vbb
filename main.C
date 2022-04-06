@@ -46,6 +46,8 @@ int main() {
   SpinMat * point_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
   read_prop(wall_filename, wall_prop, nt, nx);
   read_prop(point_filename, point_prop, nt, nx);
+  // point props need to be multiplied by 0.5 due to normalization
+  rescale_prop(point_prop, nt, nx, 0.5);
   double dtime2 = omp_get_wtime();
 
   // output files
@@ -64,6 +66,7 @@ int main() {
   double dtime3 = omp_get_wtime();
 
   // compute neutron correlator
+  // TODO: Change this to PP version
   run_neutron_correlator(wall_prop, corr, nt, nx, block_size);
   for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
   double dtime4 = omp_get_wtime();

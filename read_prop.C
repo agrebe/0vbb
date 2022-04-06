@@ -23,3 +23,9 @@ void read_prop(char * filename, SpinMat * prop, int nt, int nx) {
   }
   free (buffer);
 }
+
+void rescale_prop(SpinMat * prop, int nt, int nx, double factor) {
+  int vol = nt * nx * nx * nx;
+  for (int i = 0; i < 9 * vol; i ++)
+    prop[i] *= factor;
+}
