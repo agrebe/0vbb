@@ -15,13 +15,13 @@ static int dist_sq(int y, int z, int nx);
 
 static double nu_prop(int y1, int y2, int y3, int y4, // first point
                       int z1, int z2, int z3, int z4, // second point
-                      int nx,                         // spatial extent
+                      int nx, int nt,                 // spatial and temporal extent
                       int global_sparsening);         // global sparsening factor
 
 
 void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
                    SpinMat * Hvec,          // seqprop
                    int tx, int ty,          // operator times
-                   int nx,                  // spatial extent
+                   int nx, int nt,          // spatial and temporal extent
                    int block_size,          // sparsening factor at operator
                    int global_sparsening);  // global sparsening factor

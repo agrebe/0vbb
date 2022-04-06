@@ -148,7 +148,7 @@ int main() {
             for (int tx = tm + 2; tx <= tp - 2; tx ++) {
               // convolve seqprop with neutrino propagator
               SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
-              compute_SnuHz(SnuHz, Hvec, tx, ty, nx, block_size_sparsen, global_sparsening);
+              compute_SnuHz(SnuHz, Hvec, tx, ty, nx, nt, block_size_sparsen, global_sparsening);
               Vcomplex corr_sigma_4pt_value
                           = run_sigma_4pt(wall_prop, point_prop, SnuHz,
                             tx, tp, nx, block_size_sparsen, xc, yc, zc);

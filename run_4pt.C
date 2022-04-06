@@ -46,18 +46,16 @@ static int dist_sq(int y, int z, int nx) {
 
 static double nu_prop(int y1, int y2, int y3, int y4, // first point
                       int z1, int z2, int z3, int z4, // second point
-                      int nx,                         // spatial extent
+                      int nx, int nt,                 // spatial and temporal extent
                       int global_sparsening) {        // global sparsening factor
   int distance_sq;
   distance_sq = dist_sq(y1, z1, nx);
   distance_sq += dist_sq(y2, z2, nx);
   distance_sq += dist_sq(y3, z3, nx);
-  distance_sq += dist_sq(y4, z4, nx);
-  // Note: Technically, nx is the wrong thing to pass for the time dimension
-  // However, we should never have a neutrino wrap around in time
-
-  // inflate by global sparsening factor
+  // inflate spatial coordinates by global sparsening factor
   distance_sq *= (global_sparsening * global_sparsening);
+
+  distance_sq += dist_sq(y4, z4, nt);
 
   double prop = (distance_sq == 0) ? 1.0/16 : (1 - exp(-distance_sq * M_PI * M_PI / 4)) / (4 * M_PI * M_PI * distance_sq);
   return prop;
@@ -66,7 +64,7 @@ static double nu_prop(int y1, int y2, int y3, int y4, // first point
 void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
                    SpinMat * Hvec,          // seqprop
                    int tx, int ty,          // operator times
-                   int nx,                  // spatial extent
+                   int nx, int nt,          // spatial and temporal extent
                    int block_size,          // sparsening factor at operator
                    int global_sparsening) { // global sparsening factor
   int nx_blocked = nx / block_size;
@@ -93,7 +91,7 @@ void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
                   + (x1 / block_size);
               double nu_value = nu_prop(y1, y2, y3, ty,
                                         x1, x2, x3, tx,
-                                        nx, global_sparsening);
+                                        nx, nt, global_sparsening);
               for (int c = 0; c < 9; c ++) {
                 SnuHz[(4*idy+0)*9+c] += Hvec[(4*idx+0)*9+c] * nu_value; 
                 SnuHz[(4*idy+1)*9+c] += Hvec[(4*idx+1)*9+c] * nu_value; 
