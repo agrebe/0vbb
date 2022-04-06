@@ -15,16 +15,16 @@
 int main() {
   // lattice size variables
   int nt = 48;
-  int nx = 32;
+  int nx = 8;
   int vol = nt * nx * nx * nx;
   
   // electron mass
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 8;         // sparsening at sink
-  int block_size_sparsen = 4; // sparsening at operator
-  int global_sparsening = 1;  // ratio between nx and actual size of lattice
+  int block_size = 2;         // sparsening at sink
+  int block_size_sparsen = 1; // sparsening at operator
+  int global_sparsening = 4;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
   // source and sink time ranges
