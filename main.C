@@ -41,13 +41,20 @@ int main() {
 
   // read in propagators
   char wall_filename [100] = "../qio_propagator.lime.contents/msg02.rec03.scidac-binary-data";
+  char wall_sink_filename [100] = "../qio_propagator-wall-sink.lime.contents/msg02.rec03.scidac-binary-data";
   char point_filename [100] = "../qio_propagator_point.lime.contents/msg02.rec03.scidac-binary-data";
   SpinMat * wall_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
+  SpinMat * wall_sink_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
   SpinMat * point_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
   read_prop(wall_filename, wall_prop, nt, nx);
+  read_prop(wall_sink_filename, wall_sink_prop, nt, nx);
   read_prop(point_filename, point_prop, nt, nx);
   // point props need to be multiplied by 0.5 due to normalization
   rescale_prop(point_prop, nt, nx, 0.5);
+  // wall sink needs to be rescaled by nx^3
+  // this is because the wall sink has already been created in chroma
+  // when we create a wall sink again, we will do another sum over nx^3 sites
+  rescale_prop(wall_sink_prop, nt, nx, 1.0/(nx * nx * nx));
   double dtime2 = omp_get_wtime();
 
   // output files
@@ -61,7 +68,7 @@ int main() {
   
   // compute pion correlator (for testing)
   Vcomplex corr [nt];
-  run_pion_correlator_wsink(wall_prop, corr, nt, nx);
+  run_pion_correlator_wsink(wall_sink_prop, corr, nt, nx);
   for (int t = 0; t < nt; t ++) fprintf(pion_2pt, "%d %.10e\n", t, corr[t].real());
   double dtime3 = omp_get_wtime();
 
