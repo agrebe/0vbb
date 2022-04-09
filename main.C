@@ -73,8 +73,7 @@ int main() {
   double dtime3 = omp_get_wtime();
 
   // compute neutron correlator
-  // TODO: Change this to PP version
-  run_neutron_correlator(wall_prop, corr, nt, nx, block_size);
+  run_neutron_correlator_PP(wall_prop, corr, nt, nx, block_size);
   for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
   double dtime4 = omp_get_wtime();
 
