@@ -100,7 +100,7 @@ int main() {
         }
       }
     }
-    for (int t = tm + 2; t <= tp - 2; t ++) {
+    for (int t = tm + 3; t <= tp - 3; t ++) {
       fprintf(sigma_3pt, "%d %d %d ", tp-tm, tm, t-tm);
       for (int i = 0; i < 16; i ++) {
         Vcomplex element = corr_sigma_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
@@ -126,7 +126,7 @@ int main() {
         }
       }
     }
-    for (int t = tm + 2; t <= tp - 2; t ++) {
+    for (int t = tm + 3; t <= tp - 3; t ++) {
       fprintf(nnpp_3pt, "%d %d %d ", tp-tm, tm, t-tm);
       for (int i = 0; i < 16; i ++) {
         Vcomplex element = corr_nnpp_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
@@ -143,7 +143,7 @@ int main() {
   Vcomplex corr_sigma_4pt[nt * nt * nt];
   Vcomplex corr_nnpp_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
-    for (int ty = tm + 2; ty <= tp - 2; ty ++) {
+    for (int ty = tm + 3; ty <= tp - 3; ty ++) {
       // compute sequential propagator through one operator
       int sparse_vol = (nx / block_size_sparsen);
       sparse_vol *= sparse_vol * sparse_vol;
@@ -154,7 +154,7 @@ int main() {
             SpinMat * Hvec = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
             assemble_Hvec(Hvec, wall_prop, point_prop, nx, 
                           block_size_sparsen, tm, tp, ty);
-            for (int tx = tm + 2; tx <= tp - 2; tx ++) {
+            for (int tx = tm + 3; tx <= tp - 3; tx ++) {
               // convolve seqprop with neutrino propagator
               SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
               compute_SnuHz(SnuHz, Hvec, tx, ty, nx, nt, block_size_sparsen, global_sparsening);

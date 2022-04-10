@@ -37,7 +37,7 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
   // loop over operator insertions
   #pragma omp parallel for
-  for (int t = tm + 2; t <= tp - 2; t ++) {
+  for (int t = tm + 3; t <= tp - 3; t ++) {
     Vcomplex tmp[288];
     for (int z = 0; z < nx; z += block_size_sparsen) {
       for (int y = 0; y < nx; y += block_size_sparsen) {
