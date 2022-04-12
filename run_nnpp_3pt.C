@@ -36,12 +36,12 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
   // loop over operator insertions
-  #pragma omp parallel for
+  #pragma omp parallel for collapse(4)
   for (int t = tm + 3; t <= tp - 3; t ++) {
-    Vcomplex tmp[288];
     for (int z = 0; z < nx; z += block_size_sparsen) {
       for (int y = 0; y < nx; y += block_size_sparsen) {
         for (int x = 0; x < nx; x += block_size_sparsen) {
+          Vcomplex tmp[288];
           int loc = ((t * nx + z) * nx + y) * nx + x;
           SpinMat * S_tmx = wall_prop + 9 * loc;
           SpinMat * S_tpx = point_prop + 9 * loc;
@@ -90,18 +90,14 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
 						const double sign = color_idx_2[13*ii+12];
             // compute the necessary contractions
             #include "autogen/run_nnpp_3pt_2.inc"
-          }
+          } // colors
+          #include "autogen/run_nnpp_3pt_3.inc"
+          Vcomplex sum = Vcomplex();
+          for (int i = 0; i < 288; i ++) sum += tmp[i];
+          #pragma omp critical
+          corr[((tp-tm) * nt + (t-tm)) * nt + gamma_index] += sum;
         }
       }
     } // z, y, x
-    #pragma omp critical
-    {
-      // obtain the duplicate contractions
-      #include "autogen/run_nnpp_3pt_3.inc"
-
-      // collapse into single value (per gamma matrix) and store in corr
-      for (int i = 0; i < 288; i ++)
-        corr[((tp-tm) * nt + (t-tm)) * nt + gamma_index] += tmp[i];
-    } // end critical
   } // t
 }
