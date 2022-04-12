@@ -1,4 +1,5 @@
 #include <omp.h>
+#include <string.h>
 #include "read_prop.h"
 #include "spin_mat.h"
 #include "run_meson_2pt.h"
@@ -29,8 +30,13 @@ int main() {
   
   // source and sink time ranges
   int min_source = 0;
-  int max_source = 0;
+  int max_source = 1;
   int tp = 12; // sink time
+  
+  // compute propagator sizes and quantities
+  int num_sources = (max_source - min_source) + 1;
+  int prop_size = vol * 9;
+  int wall_sink_prop_size = nt * 9;
 
   double dtime0 = omp_get_wtime();
   // initialize gamma matrices and epsilon tensors
@@ -40,21 +46,26 @@ int main() {
   double dtime1 = omp_get_wtime();
 
   // read in propagators
-  char wall_filename [100] = "../qio_propagator.lime.contents/msg02.rec03.scidac-binary-data";
-  char wall_sink_filename [100] = "../qio_propagator-wall-sink.lime.contents/msg02.rec03.scidac-binary-data";
-  char point_filename [100] = "../qio_propagator_point.lime.contents/msg02.rec03.scidac-binary-data";
-  SpinMat * wall_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
-  SpinMat * wall_sink_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
+  SpinMat * wall_prop_storage = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat) * num_sources);
+  SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(nt * 9 * sizeof(SpinMat) * num_sources);
+  SpinMat * wall_prop [nt];
+  SpinMat * wall_sink_prop [nt];
+  for (int tm = min_source; tm <= max_source; tm ++) {
+    wall_prop[tm] = wall_prop_storage + prop_size * (tm - min_source);
+    wall_sink_prop[tm] = wall_sink_prop_storage + wall_sink_prop_size * (tm - min_source);
+  }
+  for (int tm = min_source; tm <= max_source; tm ++) {
+    char wall_sink_filename [100], wall_filename [100];
+    sprintf(wall_filename, "../props/wall-source-%d.lime.contents/msg02.rec03.scidac-binary-data", tm);
+    sprintf(wall_sink_filename, "../props/wall-source-%d-wall-sink.lime.contents/msg02.rec03.scidac-binary-data", tm);
+    read_prop(wall_filename, wall_prop[tm], nt, nx);
+    read_prop(wall_sink_filename, wall_sink_prop[tm], nt, 1);
+  }
   SpinMat * point_prop = (SpinMat*) malloc(vol * 9 * sizeof(SpinMat));
-  read_prop(wall_filename, wall_prop, nt, nx);
-  read_prop(wall_sink_filename, wall_sink_prop, nt, nx);
+  char point_filename [100] = "../qio_propagator_point.lime.contents/msg02.rec03.scidac-binary-data";
   read_prop(point_filename, point_prop, nt, nx);
   // point props need to be multiplied by 0.5 due to normalization
   rescale_prop(point_prop, nt, nx, 0.5);
-  // wall sink needs to be rescaled by nx^3
-  // this is because the wall sink has already been created in chroma
-  // when we create a wall sink again, we will do another sum over nx^3 sites
-  rescale_prop(wall_sink_prop, nt, nx, 1.0/(nx * nx * nx));
   double dtime2 = omp_get_wtime();
 
   // output files
@@ -68,19 +79,23 @@ int main() {
   
   // compute pion correlator (for testing)
   Vcomplex corr [nt];
-  run_pion_correlator_wsink(wall_sink_prop, corr, nt, nx);
-  for (int t = 0; t < nt; t ++) fprintf(pion_2pt, "%d %.10e\n", t, corr[t].real());
+  // loop over source times
+  for (int tm = min_source; tm <= max_source; tm ++) {
+    run_pion_correlator_wsink(wall_sink_prop[tm], corr, nt, 1);
+    for (int t = 0; t < nt; t ++) 
+      fprintf(pion_2pt, "%d %d %.10e\n", tm, t, corr[(t+tm)%nt].real());
+
+    // compute neutron correlator
+    run_neutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
+    for (int t = 0; t < nt; t ++) 
+      fprintf(neutron_2pt, "%d %d %.10e %.10e\n", tm, t, corr[(t+tm)%nt].real(), corr[(t+tm)%nt].imag());
+
+    // compute dineutron correlator
+    run_dineutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
+    for (int t = 0; t < nt; t ++) 
+      fprintf(dineutron_2pt, "%d %d %.10e %.10e\n", tm, t, corr[(t+tm)%nt].real(), corr[(t+tm)%nt].imag());
+  }
   double dtime3 = omp_get_wtime();
-
-  // compute neutron correlator
-  run_neutron_correlator_PP(wall_prop, corr, nt, nx, block_size);
-  for (int t = 0; t < nt; t ++) fprintf(neutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
-  double dtime4 = omp_get_wtime();
-
-  // compute dineutron correlator
-  run_dineutron_correlator_PP(wall_prop, corr, nt, nx, block_size);
-  for (int t = 0; t < nt; t ++) fprintf(dineutron_2pt, "%d %.10e %.10e\n", t, corr[t].real(), corr[t].imag());
-  double dtime5 = omp_get_wtime();
   
   // TODO: Remove the following line (for testing only)
   block_size = 32;         // sparsening at sink
@@ -95,7 +110,7 @@ int main() {
     for (int xc = 0; xc < nx; xc += block_size) {
       for (int yc = 0; yc < nx; yc += block_size) {
         for (int zc = 0; zc < nx; zc += block_size) {
-          run_sigma_3pt(wall_prop, point_prop, corr_sigma_3pt,
+          run_sigma_3pt(wall_prop[tm], point_prop, corr_sigma_3pt,
               block_size_sparsen, nt, nx, tm, tp, xc, yc, zc);
         }
       }
@@ -109,7 +124,7 @@ int main() {
       fprintf(sigma_3pt, "\n");
     }
   }
-  double dtime6 = omp_get_wtime();
+  double dtime4 = omp_get_wtime();
 
   // compute nn->pp 3-point function
   Vcomplex corr_nnpp_3pt[nt * nt * 16];
@@ -120,7 +135,7 @@ int main() {
       for (int yc = 0; yc < nx; yc += block_size) {
         for (int zc = 0; zc < nx; zc += block_size) {
           for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
-            run_nnpp_3pt(wall_prop, point_prop, corr_nnpp_3pt, gamma_index,
+            run_nnpp_3pt(wall_prop[tm], point_prop, corr_nnpp_3pt, gamma_index,
                 block_size_sparsen, nt, nx, tm, tp, xc, yc, zc);
           }
         }
@@ -135,7 +150,7 @@ int main() {
       fprintf(nnpp_3pt, "\n");
     }
   }
-  double dtime7 = omp_get_wtime();
+  double dtime5 = omp_get_wtime();
 
   // compute sigma and nn->pp 4-point functions
   // correlator should store source-sink sep and both source-op seps
@@ -152,17 +167,17 @@ int main() {
         for (int yc = 0; yc < nx; yc += block_size) {
           for (int xc = 0; xc < nx; xc += block_size) {
             SpinMat * Hvec = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
-            assemble_Hvec(Hvec, wall_prop, point_prop, nx, 
+            assemble_Hvec(Hvec, wall_prop[tm], point_prop, nx, 
                           block_size_sparsen, tm, tp, ty);
             for (int tx = tm + 3; tx <= tp - 3; tx ++) {
               // convolve seqprop with neutrino propagator
               SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
               compute_SnuHz(SnuHz, Hvec, tx, ty, nx, nt, block_size_sparsen, global_sparsening);
               Vcomplex corr_sigma_4pt_value
-                          = run_sigma_4pt(wall_prop, point_prop, SnuHz,
+                          = run_sigma_4pt(wall_prop[tm], point_prop, SnuHz,
                             tx, tp, nx, block_size_sparsen, xc, yc, zc);
               Vcomplex corr_nnpp_4pt_value
-                          = run_nnpp_4pt(wall_prop, point_prop, SnuHz,
+                          = run_nnpp_4pt(wall_prop[tm], point_prop, SnuHz,
                             tx, tp, nx, block_size_sparsen, xc, yc, zc);
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
@@ -181,7 +196,7 @@ int main() {
     }
   }
 
-  double dtime8 = omp_get_wtime();
+  double dtime6 = omp_get_wtime();
   
   // close files
   fclose(pion_2pt);
@@ -195,11 +210,9 @@ int main() {
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
   printf("1. Reading propagators:                              %17.10e s\n", dtime2 - dtime1);
-  printf("2. Pion 2-point correlator:                          %17.10e s\n", dtime3 - dtime2);
-  printf("3. Neutron 2-point correlator:                       %17.10e s\n", dtime4 - dtime3);
-  printf("4. Dineutron 2-point correlator:                     %17.10e s\n", dtime5 - dtime4);
-  printf("5. Sigma 3-point correlator:                         %17.10e s\n", dtime6 - dtime5);
-  printf("6. nn->pp 3-point correlator:                        %17.10e s\n", dtime7 - dtime6);
-  printf("7. Sigma and nn->pp 4-point correlators:             %17.10e s\n", dtime8 - dtime7);
+  printf("2. 2-point correlators:                              %17.10e s\n", dtime3 - dtime2);
+  printf("3. Sigma 3-point correlator:                         %17.10e s\n", dtime4 - dtime3);
+  printf("4. nn->pp 3-point correlator:                        %17.10e s\n", dtime5 - dtime4);
+  printf("5. Sigma and nn->pp 4-point correlators:             %17.10e s\n", dtime6 - dtime5);
   printf("----------------------------------------------------------------------\n");
 }
