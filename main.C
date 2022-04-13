@@ -23,15 +23,15 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 8;         // sparsening at sink
+  int block_size = 2;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 4;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
   // source and sink time ranges
-  int min_source = 0;
-  int max_source = 7;
-  int tp = 15; // sink time
+  int min_source = 40;
+  int max_source = 47;
+  int tp = 7; // sink time
   
   // compute propagator sizes and quantities
   int num_sources = (max_source - min_source) + 1;
@@ -183,18 +183,19 @@ int main() {
           for (int zc = 0; zc < num_pt_props; zc ++) {
             WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
             assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
-                          block_size_sparsen, tm, tp, tm + ty);
+                          block_size_sparsen, tm, tp, (tm + ty) % nt);
             for (int tx = 3; tx <= sep - 3; tx ++) {
               // convolve seqprop with neutrino propagator
               WeylMat * SnuHz = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
-              compute_SnuHz(SnuHz, Hvec, tx + tm, ty + tm, nx, nt, block_size_sparsen, global_sparsening);
+              compute_SnuHz(SnuHz, Hvec, (tx + tm) % nt, (ty + tm) % nt, 
+                            nx, nt, block_size_sparsen, global_sparsening);
               Vcomplex corr_sigma_4pt_value
                           = run_sigma_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            tx + tm, tp, nx, block_size_sparsen,
+                            (tx + tm) % nt, tp, nx, block_size_sparsen,
                             xc * block_size, yc * block_size, zc * block_size);
               Vcomplex corr_nnpp_4pt_value
                           = run_nnpp_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            tx + tm, tp, nx, block_size_sparsen,
+                            (tx + tm) % nt, tp, nx, block_size_sparsen,
                             xc * block_size, yc * block_size, zc * block_size);
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
@@ -211,8 +212,8 @@ int main() {
       for (int tx = 3; tx <= sep - 3; tx ++) {
         Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
         Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
-        fprintf(sigma_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
-        fprintf(nnpp_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
+        fprintf(sigma_4pt, "%d %d %d %e %e\n", tx, ty, sep, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+        fprintf(nnpp_4pt, "%d %d %d %e %e\n", tx, ty, sep, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
       }
     }
   }
