@@ -30,8 +30,8 @@ int main() {
   
   // source and sink time ranges
   int min_source = 0;
-  int max_source = 1;
-  int tp = 12; // sink time
+  int max_source = 7;
+  int tp = 15; // sink time
   
   // compute propagator sizes and quantities
   int num_sources = (max_source - min_source) + 1;
