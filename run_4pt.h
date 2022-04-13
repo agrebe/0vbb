@@ -2,7 +2,7 @@
 #include "spin_mat.h"
 #include "gamma_container.h"
 
-void assemble_Hvec(SpinMat * Hvec,           // sequential propagator
+void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
                    SpinMat * wall_prop,      // source to operator
                    SpinMat * point_prop,     // sink to operator
                    int nx,                   // spatial extent of lattice
@@ -19,8 +19,8 @@ static double nu_prop(int y1, int y2, int y3, int y4, // first point
                       int global_sparsening);         // global sparsening factor
 
 
-void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
-                   SpinMat * Hvec,          // seqprop
+void compute_SnuHz(WeylMat * SnuHz,         // seqprop * nu_prop
+                   WeylMat * Hvec,          // seqprop
                    int tx, int ty,          // operator times
                    int nx, int nt,          // spatial and temporal extent
                    int block_size,          // sparsening factor at operator

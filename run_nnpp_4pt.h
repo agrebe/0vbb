@@ -4,7 +4,7 @@
 
 Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
                       SpinMat * point_prop,      // prop from sink
-                      SpinMat * SnuHz,           // seqprop * nu_prop
+                      WeylMat * SnuHz,           // seqprop * nu_prop
                       int tx,                    // time of operator
                       int tp,                    // time of sink
                       int nx,                    // spatial lattice extent

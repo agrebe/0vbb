@@ -1,6 +1,7 @@
 #include "run_4pt.h"
 
-void assemble_Hvec(SpinMat * Hvec,           // sequential propagator
+// compute sequential propagator through one insertion time
+void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
                    SpinMat * wall_prop,      // source to operator
                    SpinMat * point_prop,     // sink to operator
                    int nx,                   // spatial extent of lattice
@@ -26,12 +27,12 @@ void assemble_Hvec(SpinMat * Hvec,           // sequential propagator
           else if (mu == 2) { gmu = gz; }
           else if (mu == 3) { gmu = gt; }
           for (int c = 0; c < 9; c ++) 
-            Hvec[(4 * idx + mu) * 9 + c] = SpinMat();
+            Hvec[(4 * idx + mu) * 9 + c] = WeylMat();
           for (int c1 = 0; c1 < 3; c1 ++)
             for (int c2 = 0; c2 < 3; c2 ++)
               for (int c3 = 0; c3 < 3; c3 ++)
                 Hvec[((idx * 4 + mu) * 3 + c1) * 3 + c2]
-                    += g5 * Sl_wz[3*c3+c1].hconj() * gmu * pl * Sl_xz[3*c3+c2];
+                    += ExtractWeyl(pp * g5 * Sl_wz[3*c3+c1].hconj() * gmu * pl * Sl_xz[3*c3+c2] * pp);
         }
       }
     }
@@ -44,6 +45,7 @@ static int dist_sq(int y, int z, int nx) {
   return d1 * d1; 
 }
 
+// neutrino propagator
 static double nu_prop(int y1, int y2, int y3, int y4, // first point
                       int z1, int z2, int z3, int z4, // second point
                       int nx, int nt,                 // spatial and temporal extent
@@ -61,8 +63,9 @@ static double nu_prop(int y1, int y2, int y3, int y4, // first point
   return prop;
 }
 
-void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
-                   SpinMat * Hvec,          // seqprop
+// convolve sequential quark propagator with neutrino
+void compute_SnuHz(WeylMat * SnuHz,         // seqprop * nu_prop
+                   WeylMat * Hvec,          // seqprop
                    int tx, int ty,          // operator times
                    int nx, int nt,          // spatial and temporal extent
                    int block_size,          // sparsening factor at operator
@@ -79,7 +82,7 @@ void compute_SnuHz(SpinMat * SnuHz,         // seqprop * nu_prop
         // zero out SnuHz
         for (int mu = 0; mu < 4; mu ++) { 
           for (int c = 0; c < 9; c ++) 
-            SnuHz[(4 * idy + mu) * 9 + c] = SpinMat();
+            SnuHz[(4 * idy + mu) * 9 + c] = WeylMat();
         }
 
         // loop over second operator insertion position

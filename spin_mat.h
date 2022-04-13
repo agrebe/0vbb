@@ -187,6 +187,19 @@ struct WeylMat {
     data = _mm512_add_pd(data, B.data);
     return *this;
   }
+  WeylMat operator*(const double r) {
+    __m512d factor = _mm512_set1_pd(r);
+    return WeylMat(_mm512_mul_pd(data, factor));
+  }
+  // TODO: Vectorize this
+  WeylMat operator*(const Vcomplex z) {
+    WeylMat C;
+    Vcomplex * data_array = (Vcomplex*)(&data);
+    Vcomplex * data_array_new = (Vcomplex*)(&(C.data));
+    for (int i = 0; i < 4; i ++) 
+      data_array_new[i] = data_array[i] * z;
+    return C;
+  }
   WeylMat transpose() {
     __m512i trans = {0, 1, 4, 5, 2, 3, 6, 7}; 
     return WeylMat(_mm512_permutexvar_pd(trans, data)); 

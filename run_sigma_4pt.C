@@ -2,7 +2,7 @@
 
 Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
                        SpinMat * point_prop,      // prop from sink
-                       SpinMat * SnuHz,           // seqprop * nu_prop
+                       WeylMat * SnuHz,           // seqprop * nu_prop
                        int tx,                    // time of operator
                        int tp,                    // time of sink
                        int nx,                    // spatial lattice extent
@@ -48,7 +48,7 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
           for (int c = 0; c < 9; c ++) {
             CG5SsCG5_xw[c] = ExtractWeyl(pp * cg5 * T_CG5Ss[c] * pp);
             Hay[c] = ExtractWeyl(pp * Ha[c] * pp);
-            SnuHbz[c] = ExtractWeyl(pp * SnuHz[(4*idx+mu)*9+c] * pp);
+            SnuHbz[c] = SnuHz[(4*idx+mu)*9+c];
           }
           for(int ii=0; ii<36; ii++)
           {

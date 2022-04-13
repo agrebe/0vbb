@@ -1,8 +1,8 @@
-#include "run_sigma_4pt.h"
+#include "run_nnpp_4pt.h"
 
 Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
                       SpinMat * point_prop,      // prop from sink
-                      SpinMat * SnuHz,           // seqprop * nu_prop
+                      WeylMat * SnuHz,           // seqprop * nu_prop
                       int tx,                    // time of operator
                       int tp,                    // time of sink
                       int nx,                    // spatial lattice extent
@@ -56,7 +56,7 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
 
           WeylMat SnuHbz[9], SnuHbz_T[9], SnuHbz_CG[9], SnuHbz_T_CG[9];
           for (int c = 0; c < 9; c ++) {
-            SnuHbz[c] = ExtractWeyl(pp * SnuHz[(4*idx+mu)*9+c] * pp);
+            SnuHbz[c] = SnuHz[(4*idx+mu)*9+c];
             SnuHbz_T[c] = SnuHbz[c].transpose();
             SnuHbz_CG[c] = SnuHbz[c] * cgs;
             SnuHbz_T_CG[c] = SnuHbz_T[c] * cgs;

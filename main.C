@@ -23,7 +23,7 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 2;         // sparsening at sink
+  int block_size = 8;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 4;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
@@ -175,12 +175,12 @@ int main() {
       for (int xc = 0; xc < num_pt_props; xc ++) {
         for (int yc = 0; yc < num_pt_props; yc ++) {
           for (int zc = 0; zc < num_pt_props; zc ++) {
-            SpinMat * Hvec = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
+            WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
             assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
                           block_size_sparsen, tm, tp, ty);
             for (int tx = tm + 3; tx <= tp - 3; tx ++) {
               // convolve seqprop with neutrino propagator
-              SpinMat * SnuHz = (SpinMat*) malloc(sparse_vol * 4 * 9 * sizeof(SpinMat));
+              WeylMat * SnuHz = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
               compute_SnuHz(SnuHz, Hvec, tx, ty, nx, nt, block_size_sparsen, global_sparsening);
               Vcomplex corr_sigma_4pt_value
                           = run_sigma_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
