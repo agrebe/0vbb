@@ -109,24 +109,28 @@ int main() {
   
   // compute sigma 3-point function
   // correlator should store source-sink sep and source-op sep
-  // access with corr_sigma_3pt[((tp-tm) * nt + (t-tm) * nt) + i]
+  // access with corr_sigma_3pt[(sep * nt + t * nt) + i]
   Vcomplex corr_sigma_3pt[nt * nt * 16];
   for (int i = 0; i < nt * nt * 16; i ++)
     corr_sigma_3pt[i] = Vcomplex();
   for (int tm = min_source; tm <= max_source; tm ++) {
+    // sep = (sink time) - (operator time)
+    // if sink wraps around lattice, add nt
+    int sep = (nt + tp - tm) % nt;
     for (int xc = 0; xc < num_pt_props; xc ++) {
       for (int yc = 0; yc < num_pt_props; yc ++) {
         for (int zc = 0; zc < num_pt_props; zc ++) {
           run_sigma_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_sigma_3pt,
-              block_size_sparsen, nt, nx, tm, tp, 
+              block_size_sparsen, nt, nx, tm, sep, 
               xc * block_size, yc * block_size, zc * block_size);
         }
       }
     }
-    for (int t = tm + 3; t <= tp - 3; t ++) {
-      fprintf(sigma_3pt, "%d %d %d ", tp-tm, tm, t-tm);
+    // t = (operator time) - (source time)
+    for (int t = 3; t <= sep - 3; t ++) {
+      fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
       for (int i = 0; i < 16; i ++) {
-        Vcomplex element = corr_sigma_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
+        Vcomplex element = corr_sigma_3pt[(sep * nt + t) * nt + i];
         fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
       }
       fprintf(sigma_3pt, "\n");
@@ -139,21 +143,22 @@ int main() {
   for (int i = 0; i < nt * nt * 16; i ++)
     corr_nnpp_3pt[i] = Vcomplex();
   for (int tm = min_source; tm <= max_source; tm ++) {
+    int sep = (nt + tp - tm) % nt;
     for (int xc = 0; xc < num_pt_props; xc ++) {
       for (int yc = 0; yc < num_pt_props; yc ++) {
         for (int zc = 0; zc < num_pt_props; zc ++) {
           for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
             run_nnpp_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_nnpp_3pt, gamma_index,
-                block_size_sparsen, nt, nx, tm, tp,
+                block_size_sparsen, nt, nx, tm, sep,
                 xc * block_size, yc * block_size, zc * block_size);
           }
         }
       }
     }
-    for (int t = tm + 3; t <= tp - 3; t ++) {
-      fprintf(nnpp_3pt, "%d %d %d ", tp-tm, tm, t-tm);
+    for (int t = 3; t <= sep - 3; t ++) {
+      fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
       for (int i = 0; i < 16; i ++) {
-        Vcomplex element = corr_nnpp_3pt[((tp-tm) * nt + (t-tm)) * nt + i];
+        Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * nt + i];
         fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
       }
       fprintf(nnpp_3pt, "\n");
@@ -167,7 +172,8 @@ int main() {
   Vcomplex corr_sigma_4pt[nt * nt * nt];
   Vcomplex corr_nnpp_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
-    for (int ty = tm + 3; ty <= tp - 3; ty ++) {
+    int sep = (nt + tp - tm) % nt;
+    for (int ty = 3; ty <= sep - 3; ty ++) {
       // compute sequential propagator through one operator
       int sparse_vol = (nx / block_size_sparsen);
       sparse_vol *= sparse_vol * sparse_vol;
@@ -177,34 +183,34 @@ int main() {
           for (int zc = 0; zc < num_pt_props; zc ++) {
             WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
             assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
-                          block_size_sparsen, tm, tp, ty);
-            for (int tx = tm + 3; tx <= tp - 3; tx ++) {
+                          block_size_sparsen, tm, tp, tm + ty);
+            for (int tx = 3; tx <= sep - 3; tx ++) {
               // convolve seqprop with neutrino propagator
               WeylMat * SnuHz = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
-              compute_SnuHz(SnuHz, Hvec, tx, ty, nx, nt, block_size_sparsen, global_sparsening);
+              compute_SnuHz(SnuHz, Hvec, tx + tm, ty + tm, nx, nt, block_size_sparsen, global_sparsening);
               Vcomplex corr_sigma_4pt_value
                           = run_sigma_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            tx, tp, nx, block_size_sparsen,
+                            tx + tm, tp, nx, block_size_sparsen,
                             xc * block_size, yc * block_size, zc * block_size);
               Vcomplex corr_nnpp_4pt_value
                           = run_nnpp_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            tx, tp, nx, block_size_sparsen,
+                            tx + tm, tp, nx, block_size_sparsen,
                             xc * block_size, yc * block_size, zc * block_size);
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
-              corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_sigma_4pt_value;
+              corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
               
               corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
-              corr_nnpp_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)] += corr_nnpp_4pt_value;
+              corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
               free(SnuHz);
             }
             free(Hvec);
           }
         }
       }
-      for (int tx = tm + 3; tx <= tp - 3; tx ++) {
-        Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)];
-        Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)];
+      for (int tx = 3; tx <= sep - 3; tx ++) {
+        Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
+        Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
         fprintf(sigma_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
         fprintf(nnpp_4pt, "%d %d %d %e %e\n", tx-tm, ty-tm, tp-tm, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
       }

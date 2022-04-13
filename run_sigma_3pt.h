@@ -8,5 +8,5 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
                    int block_size_sparsen,  // sparsening factor at operator
                    int nt, int nx,          // size of lattice
                    int tm,                  // source time
-                   int tp,                  // sink time
+                   int sep,                 // sink - source time
                    int xc, int yc, int zc); // sink spatial coords

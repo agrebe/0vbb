@@ -8,7 +8,7 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
                   int block_size_sparsen,  // sparsening factor at operator
                   int nt, int nx,          // size of lattice
                   int tm,                  // source time
-                  int tp,                  // sink time
+                  int sep,                 // sink - source time
                   int xc, int yc, int zc) {// sink spatial coords
   
   // gamma matrix to insert
@@ -33,16 +33,18 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
   }
   
   // extract propagator from source to sink
+  int tp = (tm + sep) % nt;
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
   // loop over operator insertions
   #pragma omp parallel for collapse(4)
-  for (int t = tm + 3; t <= tp - 3; t ++) {
+  for (int t = 3; t <= sep - 3; t ++) {
     for (int z = 0; z < nx; z += block_size_sparsen) {
       for (int y = 0; y < nx; y += block_size_sparsen) {
         for (int x = 0; x < nx; x += block_size_sparsen) {
           Vcomplex tmp[288];
-          int loc = ((t * nx + z) * nx + y) * nx + x;
+          int tx = (tm + t) % nt;
+          int loc = ((tx * nx + z) * nx + y) * nx + x;
           SpinMat * S_tmx = wall_prop + 9 * loc;
           SpinMat * S_tpx = point_prop + 9 * loc;
           SpinMat S_txp[9];
@@ -95,7 +97,7 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
           Vcomplex sum = Vcomplex();
           for (int i = 0; i < 288; i ++) sum += tmp[i];
           #pragma omp critical
-          corr[((tp-tm) * nt + (t-tm)) * nt + gamma_index] += sum;
+          corr[(sep * nt + t) * nt + gamma_index] += sum;
         }
       }
     } // z, y, x

@@ -6,19 +6,22 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
                    int block_size_sparsen,  // sparsening factor at operator
                    int nt, int nx,          // size of lattice
                    int tm,                  // source time
-                   int tp,                  // sink time
+                   int sep,                 // sink - source time
                    int xc, int yc, int zc) {// sink spatial coords
   // extract propagator from source to sink
+  int tp = (tm + sep) % nt;
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
   // loop over operator insertions
   #pragma omp parallel for collapse(4)
-  for (int t = tm + 3; t <= tp - 3; t ++) {
+  for (int t = 3; t <= sep - 3; t ++) {
     for (int z = 0; z < nx; z += block_size_sparsen) {
       for (int y = 0; y < nx; y += block_size_sparsen) {
         for (int x = 0; x < nx; x += block_size_sparsen) {
           Vcomplex tmp[16];
-          int loc = ((t * nx + z) * nx + y) * nx + x;
+          // compute operator time
+          int tx = (t + tm) % nt;
+          int loc = ((tx * nx + z) * nx + y) * nx + x;
           SpinMat * S_tm_to_x = wall_prop + 9 * loc;
           SpinMat * S_tp_to_x = point_prop + 9 * loc;
           SpinMat CG5SsCG5 [9], S_tmx [9], S_tpx [9], S_tmx_T [9], S_tpx_T [9];
@@ -89,7 +92,7 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
           } // colors
           #pragma omp critical
           for (int i = 0; i < 16; i ++)
-            corr[((tp-tm) * nt + (t-tm)) * nt + i] += tmp[i];
+            corr[(sep * nt + t) * nt + i] += tmp[i];
         }
       }
     } // z, y, x
