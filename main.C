@@ -135,7 +135,6 @@ int main() {
   double dtime4 = omp_get_wtime();
 
   // compute nn->pp 3-point function
-  /*
   Vcomplex corr_nnpp_3pt[nt * nt * 16];
   for (int i = 0; i < nt * nt * 16; i ++)
     corr_nnpp_3pt[i] = Vcomplex();
@@ -160,13 +159,11 @@ int main() {
       fprintf(nnpp_3pt, "\n");
     }
   }
-  */
   double dtime5 = omp_get_wtime();
 
   // compute sigma and nn->pp 4-point functions
   // correlator should store source-sink sep and both source-op seps
   // access with corr_sigma_3pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
-  /*
   Vcomplex corr_sigma_4pt[nt * nt * nt];
   Vcomplex corr_nnpp_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
@@ -213,7 +210,6 @@ int main() {
       }
     }
   }
-  */
 
   double dtime6 = omp_get_wtime();
   
