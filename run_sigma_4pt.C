@@ -15,6 +15,7 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
   SpinMat * Ss_xw = wall_prop + 9 * loc;
   // loop over operator insertions
   int nx_blocked = nx / block_size;
+  #pragma omp parallel for collapse(3)
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
       for (int x = 0; x < nx; x += block_size) {
@@ -64,6 +65,7 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
             tmp -= sign * Trace(SnuHbz[3*i+ip] * CG5SsCG5_xw[3*k+jp] * Hay[3*j+kp]);
           }
         }
+        #pragma omp critical
         corr_sigma_4pt += tmp;
       }
     }

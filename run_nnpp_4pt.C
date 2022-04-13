@@ -25,6 +25,7 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
 
   // loop over operator insertions
   int nx_blocked = nx / block_size;
+  Vcomplex total[nx_blocked * nx_blocked * nx_blocked];
   #pragma omp parallel for collapse(3)
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
@@ -80,13 +81,16 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
           }
         }
         #include "autogen/run_nnpp_4pt_3.inc"
-        Vcomplex total = Vcomplex();
+        total[(z * nx_blocked + y) * nx_blocked + x] = Vcomplex();
         for (int c = 0; c < 576; c ++)
-          total += tmp[c];
-        #pragma omp critical
-        corr_nnpp_4pt += total;
+          total[(z * nx_blocked + y) * nx_blocked + x] += tmp[c];
       }
     }
   }
+  for (int z = 0; z < nx; z += block_size)
+    for (int y = 0; y < nx; y += block_size)
+      for (int x = 0; x < nx; x += block_size)
+        corr_nnpp_4pt += total[(z * nx_blocked + y) * nx_blocked + x];
+
   return (corr_nnpp_4pt);
 }
