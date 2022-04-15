@@ -21,8 +21,8 @@ void run_neutron_correlator(SpinMat * prop, Vcomplex * corr, int nt, int nx, int
             const int& e      = color_idx_1[7*ii+4];
             const int& f      = color_idx_1[7*ii+5];
             const double sign = color_idx_1[7*ii+6];
-            corr[t] += sign * Trace(cg5 * wilsonMat[3*e+b] * cg5 * wilsonMat[3*d+a].transpose()) * Trace(pp * wilsonMat[3*f+c]);
-            corr[t] -= sign * Trace(cg5 * wilsonMat[3*e+b] * cg5 * wilsonMat[3*f+a].transpose() * pp * wilsonMat[3*d+c].transpose());
+            corr[t] -= sign * Trace(cg5 * wilsonMat[3*e+b] * cg5 * wilsonMat[3*d+a].transpose()) * Trace(pp * wilsonMat[3*f+c]);
+            corr[t] += sign * Trace(cg5 * wilsonMat[3*e+b] * cg5 * wilsonMat[3*f+a].transpose() * pp * wilsonMat[3*d+c].transpose());
           }
         }
       }
@@ -49,8 +49,8 @@ void run_neutron_correlator_PP(SpinMat * prop, Vcomplex * corr, int nt, int nx, 
             const int& e      = color_idx_1[7*ii+4];
             const int& f      = color_idx_1[7*ii+5];
             const double sign = color_idx_1[7*ii+6];
-            corr[t] += sign * Trace(pp * cg5 * wilsonMat[3*e+b] * pp * cg5 * wilsonMat[3*d+a].transpose()) * Trace(pp * wilsonMat[3*f+c]);
-            corr[t] -= sign * Trace(pp * cg5 * wilsonMat[3*e+b] * pp * cg5 * wilsonMat[3*f+a].transpose() * pp * wilsonMat[3*d+c].transpose());
+            corr[t] -= sign * Trace(pp * cg5 * wilsonMat[3*e+b] * pp * cg5 * wilsonMat[3*d+a].transpose()) * Trace(pp * wilsonMat[3*f+c]);
+            corr[t] += sign * Trace(pp * cg5 * wilsonMat[3*e+b] * pp * cg5 * wilsonMat[3*f+a].transpose() * pp * wilsonMat[3*d+c].transpose());
           }
         }
       }

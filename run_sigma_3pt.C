@@ -26,7 +26,9 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
           SpinMat * S_tp_to_x = point_prop + 9 * loc;
           SpinMat CG5SsCG5 [9], S_tmx [9], S_tpx [9], S_tmx_T [9], S_tpx_T [9];
           for (int c = 0; c < 9; c ++) {
-            CG5SsCG5[c] = pp * cg5 * S_tm_to_tp[c].transpose() * pp * cg5;
+            // Note: The -1 factor at the end is needed for consistency with CPS code
+            // There, we had a factor of cg5.transpose() = - cg5
+            CG5SsCG5[c] = pp * cg5 * S_tm_to_tp[c].transpose() * pp * cg5 * -1;
             S_tmx[c] = S_tm_to_x[c] * pp;
             S_tpx[c] = S_tp_to_x[c] * pp;
           }
