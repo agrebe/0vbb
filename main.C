@@ -172,15 +172,16 @@ int main() {
   Vcomplex corr_sigma_4pt[nt * nt * nt];
   Vcomplex corr_nnpp_4pt[nt * nt * nt];
   for (int tm = min_source; tm <= max_source; tm ++) {
-    int sep = (nt + tp - tm) % nt;
-    for (int ty = 3; ty <= sep - 3; ty ++) {
+    #pragma omp parallel for collapse(4)
+    for (int ty = 3; ty <= ((nt + tp - tm) % nt) - 3; ty ++) {
       // compute sequential propagator through one operator
-      int sparse_vol = (nx / block_size_sparsen);
-      sparse_vol *= sparse_vol * sparse_vol;
       // loop over source positions
       for (int xc = 0; xc < num_pt_props; xc ++) {
         for (int yc = 0; yc < num_pt_props; yc ++) {
           for (int zc = 0; zc < num_pt_props; zc ++) {
+            int sep = (nt + tp - tm) % nt;
+            int sparse_vol = (nx / block_size_sparsen);
+            sparse_vol *= sparse_vol * sparse_vol;
             WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
             assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
                           block_size_sparsen, tm, tp, (tm + ty) % nt);
@@ -199,16 +200,23 @@ int main() {
                             xc * block_size, yc * block_size, zc * block_size);
               // rescale based on electron mass
               corr_sigma_4pt_value *= exp(me * abs(ty - tx));
-              corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
-              
               corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
-              corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
+              #pragma omp critical
+              {
+                corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
+                corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
+              }
               free(SnuHz);
             }
             free(Hvec);
           }
         }
       }
+    }
+  }
+  for (int tm = min_source; tm <= max_source; tm ++) {
+    int sep = (nt + tp - tm) % nt;
+    for (int ty = 3; ty <= sep - 3; ty ++) {
       for (int tx = 3; tx <= sep - 3; tx ++) {
         Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
         Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
