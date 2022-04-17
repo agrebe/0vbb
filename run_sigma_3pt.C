@@ -94,7 +94,7 @@ void run_sigma_3pt(SpinMat* wall_prop,      // wall prop at source
           } // colors
           #pragma omp critical
           for (int i = 0; i < 16; i ++)
-            corr[(sep * nt + t) * nt + i] += tmp[i];
+            corr[(sep * nt + t) * 16 + i] += tmp[i];
         }
       }
     } // z, y, x

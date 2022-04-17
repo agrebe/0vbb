@@ -97,7 +97,7 @@ void run_nnpp_3pt(SpinMat* wall_prop,      // wall prop at source
           Vcomplex sum = Vcomplex();
           for (int i = 0; i < 288; i ++) sum += tmp[i];
           #pragma omp critical
-          corr[(sep * nt + t) * nt + gamma_index] += sum;
+          corr[(sep * nt + t) * 16 + gamma_index] += sum;
         }
       }
     } // z, y, x
