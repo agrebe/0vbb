@@ -29,12 +29,13 @@ int main() {
                               // this is the amount by which props have already been sparsened
   
   // source and sink time ranges
-  int min_source = 40;
-  int max_source = 47;
-  int tp = 7; // sink time
+  int min_sep = 6;
+  int max_sep = 16;
+  int sink_offset = 7; // minimum sink time
+  int sink_sep = 8;    // separation between sinks
   
   // compute propagator sizes and quantities
-  int num_sources = (max_source - min_source) + 1;
+  int num_sources = nt;
   int prop_size = vol * 9;
   int wall_sink_prop_size = nt * 9;
   int num_pt_props = nx / block_size; // number of point props in each direction
@@ -44,6 +45,12 @@ int main() {
   initialize_gammas();
   color_tensor_1body(color_idx_1);
   color_tensor_2bodies(color_idx_2);
+
+  // output files
+  FILE* pion_2pt = fopen("../results/pion-2pt-WW", "w");
+  FILE* neutron_2pt = fopen("../results/nucleon-2pt-WP", "w");
+  FILE* dineutron_2pt = fopen("../results/dinucleon-2pt-WP", "w");
+
   double dtime1 = omp_get_wtime();
 
   // read in propagators
@@ -51,9 +58,9 @@ int main() {
   SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * num_sources);
   SpinMat * wall_prop [nt];
   SpinMat * wall_sink_prop [nt];
-  for (int tm = min_source; tm <= max_source; tm ++) {
-    wall_prop[tm] = wall_prop_storage + prop_size * (tm - min_source);
-    wall_sink_prop[tm] = wall_sink_prop_storage + wall_sink_prop_size * (tm - min_source);
+  for (int tm = 0; tm < nt; tm ++) {
+    wall_prop[tm] = wall_prop_storage + prop_size * tm;
+    wall_sink_prop[tm] = wall_sink_prop_storage + wall_sink_prop_size * tm;
     
     char wall_sink_filename [100], wall_filename [100];
     sprintf(wall_filename, "../props/wall-source-%d.lime.contents/msg02.rec03.scidac-binary-data", tm);
@@ -61,177 +68,182 @@ int main() {
     read_prop(wall_filename, wall_prop[tm], nt, nx);
     read_prop(wall_sink_filename, wall_sink_prop[tm], nt, 1);
   }
-  
-  SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
-                                                   * num_pt_props * num_pt_props * num_pt_props);
-  SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
-  for (int xc = 0; xc < num_pt_props; xc ++) {
-    for (int yc = 0; yc < num_pt_props; yc ++) {
-      for (int zc = 0; zc < num_pt_props; zc ++) {
-        point_prop[xc][yc][zc] = point_prop_storage + prop_size * ((xc * num_pt_props + yc) * num_pt_props + zc);
-        char point_filename [100];
-        sprintf(point_filename, "../props/point-prop-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", xc, yc, zc);
-        read_prop(point_filename, point_prop[xc][yc][zc], nt, nx);
-        rescale_prop(point_prop[xc][yc][zc], nt, nx, 0.5);
-      }
-    }
-  }
+
   double dtime2 = omp_get_wtime();
 
-  // output files
-  FILE* pion_2pt = fopen("../results/pion-2pt-WW", "w");
-  FILE* neutron_2pt = fopen("../results/nucleon-2pt-WP", "w");
-  FILE* dineutron_2pt = fopen("../results/dinucleon-2pt-WP", "w");
-  FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
-  FILE* nnpp_3pt = fopen("../results/nnpp-3pt", "w");
-  FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
-  FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
-  
   // compute pion correlator (for testing)
   Vcomplex corr [nt];
   // loop over source times
-  for (int tm = min_source; tm <= max_source; tm ++) {
+  for (int tm = 0; tm < nt; tm ++) {
     run_pion_correlator_wsink(wall_sink_prop[tm], corr, nt, 1);
     for (int t = 0; t < nt; t ++) 
       fprintf(pion_2pt, "%d %d %.10e\n", tm, t, corr[(t+tm)%nt].real());
 
     // compute neutron correlator
     run_neutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
-    for (int t = 0; t < nt; t ++) 
-      fprintf(neutron_2pt, "%d %d %.10e %.10e\n", tm, t, corr[(t+tm)%nt].real(), corr[(t+tm)%nt].imag());
+    // flip sign (due to AP boundary conditions) if tp = t + tm > nt
+    for (int t = 0; t < nt; t ++) {
+      double sign = (t + tm >= nt) ? -1 : 1;
+      fprintf(neutron_2pt, "%d %d %.10e %.10e\n", tm, t,
+              sign * corr[(t+tm)%nt].real(), sign * corr[(t+tm)%nt].imag());
+    }
 
     // compute dineutron correlator
     run_dineutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
     for (int t = 0; t < nt; t ++) 
       fprintf(dineutron_2pt, "%d %d %.10e %.10e\n", tm, t, corr[(t+tm)%nt].real(), corr[(t+tm)%nt].imag());
   }
+
+  // close 2-point output files
+  fclose(pion_2pt);
+  fclose(neutron_2pt);
+  fclose(dineutron_2pt);
+
   double dtime3 = omp_get_wtime();
   
-  // compute sigma 3-point function
-  // correlator should store source-sink sep and source-op sep
-  // access with corr_sigma_3pt[(sep * nt + t * nt) + i]
-  Vcomplex corr_sigma_3pt[nt * nt * 16];
-  for (int i = 0; i < nt * nt * 16; i ++)
-    corr_sigma_3pt[i] = Vcomplex();
-  for (int tm = min_source; tm <= max_source; tm ++) {
-    // sep = (sink time) - (operator time)
-    // if sink wraps around lattice, add nt
-    int sep = (nt + tp - tm) % nt;
+  // 3-point and 4-point output files
+  FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
+  FILE* nnpp_3pt = fopen("../results/nnpp-3pt", "w");
+  FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
+  FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
+
+  SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
+                                                   * num_pt_props * num_pt_props * num_pt_props);
+
+  for (int tp = sink_offset; tp < nt; tp += sink_sep) {
+    SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
     for (int xc = 0; xc < num_pt_props; xc ++) {
       for (int yc = 0; yc < num_pt_props; yc ++) {
         for (int zc = 0; zc < num_pt_props; zc ++) {
-          run_sigma_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_sigma_3pt,
-              block_size_sparsen, nt, nx, tm, sep, 
-              xc * block_size, yc * block_size, zc * block_size);
+          point_prop[xc][yc][zc] = point_prop_storage + prop_size * ((xc * num_pt_props + yc) * num_pt_props + zc);
+          char point_filename [100];
+          sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
+          read_prop(point_filename, point_prop[xc][yc][zc], nt, nx);
+          rescale_prop(point_prop[xc][yc][zc], nt, nx, 0.5);
         }
       }
     }
-    // t = (operator time) - (source time)
-    for (int t = 3; t <= sep - 3; t ++) {
-      fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
-      for (int i = 0; i < 16; i ++) {
-        Vcomplex element = corr_sigma_3pt[(sep * nt + t) * nt + i];
-        fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
-      }
-      fprintf(sigma_3pt, "\n");
-    }
-  }
-  double dtime4 = omp_get_wtime();
 
-  // compute nn->pp 3-point function
-  Vcomplex corr_nnpp_3pt[nt * nt * 16];
-  for (int i = 0; i < nt * nt * 16; i ++)
-    corr_nnpp_3pt[i] = Vcomplex();
-  for (int tm = min_source; tm <= max_source; tm ++) {
-    int sep = (nt + tp - tm) % nt;
-    for (int xc = 0; xc < num_pt_props; xc ++) {
-      for (int yc = 0; yc < num_pt_props; yc ++) {
-        for (int zc = 0; zc < num_pt_props; zc ++) {
-          for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
-            run_nnpp_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_nnpp_3pt, gamma_index,
-                block_size_sparsen, nt, nx, tm, sep,
+    
+    // compute sigma 3-point function
+    // correlator should store source-sink sep and source-op sep
+    // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
+    Vcomplex corr_sigma_3pt[nt * nt * 16];
+    for (int i = 0; i < nt * nt * 16; i ++)
+      corr_sigma_3pt[i] = Vcomplex();
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      // sep = (sink time) - (operator time)
+      // if sink wraps around lattice, add nt
+      int tm = (nt + tp - sep) % nt;
+      for (int xc = 0; xc < num_pt_props; xc ++) {
+        for (int yc = 0; yc < num_pt_props; yc ++) {
+          for (int zc = 0; zc < num_pt_props; zc ++) {
+            run_sigma_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_sigma_3pt,
+                block_size_sparsen, nt, nx, tm, sep, 
                 xc * block_size, yc * block_size, zc * block_size);
           }
         }
       }
-    }
-    for (int t = 3; t <= sep - 3; t ++) {
-      fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
-      for (int i = 0; i < 16; i ++) {
-        Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * nt + i];
-        fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
+      // t = (operator time) - (source time)
+      for (int t = 3; t <= sep - 3; t ++) {
+        fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
+        for (int i = 0; i < 16; i ++) {
+          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * 16 + i];
+          // flip sign if needed for AP boundary conditions
+          if (tm + sep >= nt) element *= -1;
+          fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(sigma_3pt, "\n");
       }
-      fprintf(nnpp_3pt, "\n");
     }
-  }
-  double dtime5 = omp_get_wtime();
 
-  // compute sigma and nn->pp 4-point functions
-  // correlator should store source-sink sep and both source-op seps
-  // access with corr_sigma_3pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
-  Vcomplex corr_sigma_4pt[nt * nt * nt];
-  Vcomplex corr_nnpp_4pt[nt * nt * nt];
-  for (int tm = min_source; tm <= max_source; tm ++) {
-    #pragma omp parallel for collapse(4)
-    for (int ty = 3; ty <= ((nt + tp - tm) % nt) - 3; ty ++) {
-      // compute sequential propagator through one operator
-      // loop over source positions
+    // compute nn->pp 3-point function
+    Vcomplex corr_nnpp_3pt[nt * nt * 16];
+    for (int i = 0; i < nt * nt * 16; i ++)
+      corr_nnpp_3pt[i] = Vcomplex();
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      int tm = (nt + tp - sep) % nt;
       for (int xc = 0; xc < num_pt_props; xc ++) {
         for (int yc = 0; yc < num_pt_props; yc ++) {
           for (int zc = 0; zc < num_pt_props; zc ++) {
-            int sep = (nt + tp - tm) % nt;
-            int sparse_vol = (nx / block_size_sparsen);
-            sparse_vol *= sparse_vol * sparse_vol;
-            WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
-            assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
-                          block_size_sparsen, tm, tp, (tm + ty) % nt);
-            for (int tx = 3; tx <= sep - 3; tx ++) {
-              // convolve seqprop with neutrino propagator
-              WeylMat * SnuHz = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
-              compute_SnuHz(SnuHz, Hvec, (tx + tm) % nt, (ty + tm) % nt, 
-                            nx, nt, block_size_sparsen, global_sparsening);
-              Vcomplex corr_sigma_4pt_value
-                          = run_sigma_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            (tx + tm) % nt, tp, nx, block_size_sparsen,
-                            xc * block_size, yc * block_size, zc * block_size);
-              Vcomplex corr_nnpp_4pt_value
-                          = run_nnpp_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
-                            (tx + tm) % nt, tp, nx, block_size_sparsen,
-                            xc * block_size, yc * block_size, zc * block_size);
-              // rescale based on electron mass
-              corr_sigma_4pt_value *= exp(me * abs(ty - tx));
-              corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
-              #pragma omp critical
-              {
-                corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
-                corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
-              }
-              free(SnuHz);
+            for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
+              run_nnpp_3pt(wall_prop[tm], point_prop[xc][yc][zc], corr_nnpp_3pt, gamma_index,
+                  block_size_sparsen, nt, nx, tm, sep,
+                  xc * block_size, yc * block_size, zc * block_size);
             }
-            free(Hvec);
           }
+        }
+      }
+      for (int t = 3; t <= sep - 3; t ++) {
+        fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
+        for (int i = 0; i < 16; i ++) {
+          Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * 16 + i];
+          fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(nnpp_3pt, "\n");
+      }
+    }
+
+    // compute sigma and nn->pp 4-point functions
+    // correlator should store source-sink sep and both source-op seps
+    // access with corr_sigma_3pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
+    Vcomplex corr_sigma_4pt[nt * nt * nt];
+    Vcomplex corr_nnpp_4pt[nt * nt * nt];
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      int tm = (nt + tp - sep) % nt;
+      for (int ty = 3; ty <= sep - 3; ty ++) {
+        // loop over source positions
+        for (int xc = 0; xc < num_pt_props; xc ++) {
+          for (int yc = 0; yc < num_pt_props; yc ++) {
+            for (int zc = 0; zc < num_pt_props; zc ++) {
+              // compute sequential propagator through one operator
+              int sparse_vol = (nx / block_size_sparsen);
+              sparse_vol *= sparse_vol * sparse_vol;
+              WeylMat * Hvec = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
+              assemble_Hvec(Hvec, wall_prop[tm], point_prop[xc][yc][zc], nx, 
+                            block_size_sparsen, tm, tp, (tm + ty) % nt);
+              for (int tx = 3; tx <= sep - 3; tx ++) {
+                // convolve seqprop with neutrino propagator
+                WeylMat * SnuHz = (WeylMat*) malloc(sparse_vol * 4 * 9 * sizeof(WeylMat));
+                compute_SnuHz(SnuHz, Hvec, (tx + tm) % nt, (ty + tm) % nt,
+                              nx, nt, block_size_sparsen, global_sparsening);
+                Vcomplex corr_sigma_4pt_value
+                            = run_sigma_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
+                              (tx + tm) % nt, tp, nx, block_size_sparsen,
+                              xc * block_size, yc * block_size, zc * block_size);
+                Vcomplex corr_nnpp_4pt_value
+                            = run_nnpp_4pt(wall_prop[tm], point_prop[xc][yc][zc], SnuHz,
+                              (tx + tm) % nt, tp, nx, block_size_sparsen,
+                              xc * block_size, yc * block_size, zc * block_size);
+                // rescale based on electron mass
+                corr_sigma_4pt_value *= exp(me * abs(ty - tx));
+                corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
+                
+                corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
+                corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
+                free(SnuHz);
+              }
+              free(Hvec);
+            }
+          }
+        }
+      }
+      for (int ty = 3; ty <= sep - 3; ty ++) {
+        for (int tx = 3; tx <= sep - 3; tx ++) {
+          Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
+          Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
+          // flip sign if needed for AP boundary conditions
+          if (tm + sep >= nt) corr_sigma_4pt_value *= -1;
+          fprintf(sigma_4pt, "%d %d %d %.10e %.10e\n", tx, ty, sep, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+          fprintf(nnpp_4pt, "%d %d %d %.10e %.10e\n", tx, ty, sep, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
         }
       }
     }
   }
-  for (int tm = min_source; tm <= max_source; tm ++) {
-    int sep = (nt + tp - tm) % nt;
-    for (int ty = 3; ty <= sep - 3; ty ++) {
-      for (int tx = 3; tx <= sep - 3; tx ++) {
-        Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
-        Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
-        fprintf(sigma_4pt, "%d %d %d %e %e\n", tx, ty, sep, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
-        fprintf(nnpp_4pt, "%d %d %d %e %e\n", tx, ty, sep, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
-      }
-    }
-  }
 
-  double dtime6 = omp_get_wtime();
+  double dtime4 = omp_get_wtime();
   
-  // close files
-  fclose(pion_2pt);
-  fclose(neutron_2pt);
-  fclose(dineutron_2pt);
+  // close 3-point and 4-point files
   fclose(sigma_3pt);
   fclose(nnpp_3pt);
   fclose(sigma_4pt);
@@ -241,8 +253,6 @@ int main() {
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
   printf("1. Reading propagators:                              %17.10e s\n", dtime2 - dtime1);
   printf("2. 2-point correlators:                              %17.10e s\n", dtime3 - dtime2);
-  printf("3. Sigma 3-point correlator:                         %17.10e s\n", dtime4 - dtime3);
-  printf("4. nn->pp 3-point correlator:                        %17.10e s\n", dtime5 - dtime4);
-  printf("5. Sigma and nn->pp 4-point correlators:             %17.10e s\n", dtime6 - dtime5);
+  printf("3. 3-point and 4-point correlators:                  %17.10e s\n", dtime4 - dtime3);
   printf("----------------------------------------------------------------------\n");
 }
