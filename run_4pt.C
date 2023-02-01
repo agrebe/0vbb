@@ -95,7 +95,44 @@ void compute_SnuHz(WeylMat * SnuHz,         // seqprop * nu_prop
               double nu_value = nu_prop(y1, y2, y3, ty,
                                         x1, x2, x3, tx,
                                         nx, nt, global_sparsening);
+              __m512d nu_value_vec = _mm512_set1_pd(nu_value);
               for (int c = 0; c < 9; c ++) {
+                // add Hvec * pl * nu_value to SnuHz
+                // use AVX-512 FMA intrinsics to accelerate this
+                SnuHz[(4*idy+0)*9+c].data = _mm512_fmsubadd_pd(
+                    _mm512_permute_pd(
+                      Hvec[(4*idx+1)*9+c].data, 0b01010101), 
+                    nu_value_vec, SnuHz[(4*idy+0)*9+c].data);
+                SnuHz[(4*idy+0)*9+c].data = _mm512_fmsubadd_pd(
+                    Hvec[(4*idx+0)*9+c].data, nu_value_vec,
+                    SnuHz[(4*idy+0)*9+c].data);
+
+                SnuHz[(4*idy+1)*9+c].data = _mm512_fmaddsub_pd(
+                    _mm512_permute_pd(
+                      Hvec[(4*idx+0)*9+c].data, 0b01010101), 
+                    nu_value_vec, SnuHz[(4*idy+1)*9+c].data);
+                SnuHz[(4*idy+1)*9+c].data = _mm512_fmaddsub_pd(
+                    Hvec[(4*idx+1)*9+c].data, nu_value_vec,
+                    SnuHz[(4*idy+1)*9+c].data);
+
+                SnuHz[(4*idy+2)*9+c].data = _mm512_fmaddsub_pd(
+                    _mm512_permute_pd(
+                      Hvec[(4*idx+3)*9+c].data, 0b01010101), 
+                    nu_value_vec, SnuHz[(4*idy+2)*9+c].data);
+                SnuHz[(4*idy+2)*9+c].data = _mm512_fmaddsub_pd(
+                    Hvec[(4*idx+2)*9+c].data, nu_value_vec,
+                    SnuHz[(4*idy+2)*9+c].data);
+
+                SnuHz[(4*idy+3)*9+c].data = _mm512_fmsubadd_pd(
+                    _mm512_permute_pd(
+                      Hvec[(4*idx+2)*9+c].data, 0b01010101), 
+                    nu_value_vec, SnuHz[(4*idy+3)*9+c].data);
+                SnuHz[(4*idy+3)*9+c].data = _mm512_fmsubadd_pd(
+                    Hvec[(4*idx+3)*9+c].data, nu_value_vec,
+                    SnuHz[(4*idy+3)*9+c].data);
+                /*
+                 * original (unoptimized) algorithm
+                 * add Hvec * pl * nu_value to SnuHz
                 SnuHz[(4*idy+0)*9+c] += Hvec[(4*idx+0)*9+c] * nu_value; 
                 SnuHz[(4*idy+1)*9+c] += Hvec[(4*idx+1)*9+c] * nu_value; 
                 SnuHz[(4*idy+2)*9+c] += Hvec[(4*idx+2)*9+c] * nu_value; 
@@ -104,6 +141,7 @@ void compute_SnuHz(WeylMat * SnuHz,         // seqprop * nu_prop
                 SnuHz[(4*idy+1)*9+c] += Hvec[(4*idx+0)*9+c] * nu_value * Vcomplex(0,1);
                 SnuHz[(4*idy+2)*9+c] += Hvec[(4*idx+3)*9+c] * nu_value * Vcomplex(0,1);
                 SnuHz[(4*idy+3)*9+c] += Hvec[(4*idx+2)*9+c] * nu_value * Vcomplex(0,-1);
+                */
               }
             }
           }
