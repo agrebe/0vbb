@@ -1,8 +1,7 @@
 #include "run_sigma_4pt.h"
 
 Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
-                       SpinMat * point_prop,      // prop from sink
-                       WeylMat * SnuHz,           // seqprop * nu_prop
+                       Vcomplex * T,              // big ol' tensor
                        int tx,                    // time of operator
                        int tp,                    // time of sink
                        int nx,                    // spatial lattice extent
@@ -15,60 +14,61 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
   SpinMat * Ss_xw = wall_prop + 9 * loc;
   // loop over operator insertions
   int nx_blocked = nx / block_size;
-  #pragma omp parallel for collapse(3)
-  for (int z = 0; z < nx; z += block_size) {
-    for (int y = 0; y < nx; y += block_size) {
-      for (int x = 0; x < nx; x += block_size) {
-        Vcomplex tmp;
-        int loc = ((tx * nx + z) * nx + y) * nx + x;
-        int idx = ((z / block_size) * nx_blocked 
-            + (y / block_size)) * nx_blocked 
-            + (x / block_size);
-        SpinMat * Sl_xy = wall_prop + 9 * loc;
-        SpinMat * Sl_wy = point_prop + 9 * loc;
-        SpinMat T_CG5Ss [9];
-        for (int c = 0; c < 9; c ++)
-          T_CG5Ss[c] = (cg5 * Ss_xw[c]).transpose();
-        for(int mu=0; mu<4; mu++)
-        {
+  Vcomplex tmp;
+  SpinMat * Sl_xy = wall_prop + 9 * loc;
+  SpinMat T_CG5Ss [9];
+  for (int c = 0; c < 9; c ++)
+    T_CG5Ss[c] = (cg5 * Ss_xw[c]).transpose();
 
-          SpinMat gmu;
-          if     (mu == 0){ gmu = gx; }
-          else if(mu == 1){ gmu = gy; }
-          else if(mu == 2){ gmu = gz; }
-          else if(mu == 3){ gmu = gt; }
-
-          SpinMat Ha[9];
-          for (int c1 = 0; c1 < 3; c1 ++)
-            for (int c2 = 0; c2 < 3; c2 ++)
-              for (int c3 = 0; c3 < 3; c3 ++)
-                Ha[3*c1+c2] += g5 * Sl_wy[3*c3+c1].hconj() * gmu * pl * Sl_xy[3*c3+c2];
-
-          WeylMat CG5SsCG5_xw[9], Hay[9], SnuHbz[9];
-          for (int c = 0; c < 9; c ++) {
-            CG5SsCG5_xw[c] = ExtractWeyl(pp * cg5 * T_CG5Ss[c] * pp);
-            Hay[c] = ExtractWeyl(pp * Ha[c] * pp);
-            SnuHbz[c] = SnuHz[(4*idx+mu)*9+c];
-          }
-          for(int ii=0; ii<36; ii++)
-          {
-            const int& i      = color_idx_1[7*ii+0];
-            const int& j      = color_idx_1[7*ii+1];
-            const int& k      = color_idx_1[7*ii+2];
-            const int& ip     = color_idx_1[7*ii+3];
-            const int& jp     = color_idx_1[7*ii+4];
-            const int& kp     = color_idx_1[7*ii+5];
-            const double sign = color_idx_1[7*ii+6];
-            tmp += sign * Trace(SnuHbz[3*i+kp]) * Trace(Hay[3*j+ip] * CG5SsCG5_xw[3*k+jp]);
-            tmp += sign * Trace(Hay[3*i+kp]) * Trace(SnuHbz[3*j+ip] * CG5SsCG5_xw[3*k+jp]);
-            tmp -= sign * Trace(Hay[3*i+ip] * CG5SsCG5_xw[3*k+jp] * SnuHbz[3*j+kp]);
-            tmp -= sign * Trace(SnuHbz[3*i+ip] * CG5SsCG5_xw[3*k+jp] * Hay[3*j+kp]);
-          }
-        }
-        #pragma omp critical
-        corr_sigma_4pt += tmp;
-      }
-    }
+  WeylMat CG5SsCG5_xw[9], Hay[9], SnuHbz[9];
+  for (int c = 0; c < 9; c ++) {
+    CG5SsCG5_xw[c] = ExtractWeyl(pp * cg5 * T_CG5Ss[c] * pp);
   }
+  for(int ii=0; ii<36; ii++)
+  {
+    const int& i      = color_idx_1[7*ii+0];
+    const int& j      = color_idx_1[7*ii+1];
+    const int& k      = color_idx_1[7*ii+2];
+    const int& ip     = color_idx_1[7*ii+3];
+    const int& jp     = color_idx_1[7*ii+4];
+    const int& kp     = color_idx_1[7*ii+5];
+    const double sign = color_idx_1[7*ii+6];
+    // loop over spins
+    for (int s1 = 0; s1 < 2; s1 ++)
+      for (int s2 = 0; s2 < 2; s2 ++)
+        for (int s3 = 0; s3 < 2; s3 ++)
+          for (int s4 = 0; s4 < 2; s4 ++) {
+            // tmp += sign * Trace(SnuHbz[3*i+kp]) * Trace(Hay[3*j+ip] * CG5SsCG5_xw[3*k+jp]);
+            Vcomplex tensor_value = T[tensor_index(j, ip, i, kp, s1, s2, s3, s4)];
+            // trace over spins of SnuHbz (s3 and s4)
+            if (s3 == s4) {
+              // trace spins of Hay (s1 and s2) against CG5SsCG5_xw
+              Vcomplex CG5SsCG5_xw_value = *(((Vcomplex *) (CG5SsCG5_xw + 3*k + jp)) + 2*s2 + s1);
+              tmp += sign * tensor_value * CG5SsCG5_xw_value;
+            }
+            tensor_value = T[tensor_index(i, kp, j, ip, s1, s2, s3, s4)];
+            // trace spins of Hay
+            if (s1 == s2) {
+              // trace spins of SnuHbz against CG5SsCG5_xw
+              Vcomplex CG5SsCG5_xw_value = *(((Vcomplex *) (CG5SsCG5_xw + 3*k + jp)) + 2*s4 + s3);
+              tmp += sign * tensor_value * CG5SsCG5_xw_value;
+            }
+            tensor_value = T[tensor_index(i, ip, j, kp, s1, s2, s3, s4)];
+            if (s4 == s1) {
+              Vcomplex CG5SsCG5_xw_value = *(((Vcomplex *) (CG5SsCG5_xw + 3*k + jp)) + 2*s2 + s3);
+              tmp -= sign * tensor_value * CG5SsCG5_xw_value;
+            }
+            tensor_value = T[tensor_index(j, kp, i, ip, s1, s2, s3, s4)];
+            if (s2 == s3) {
+              Vcomplex CG5SsCG5_xw_value = *(((Vcomplex *) (CG5SsCG5_xw + 3*k + jp)) + 2*s4 + s1);
+              tmp -= sign * tensor_value * CG5SsCG5_xw_value;
+            }
+          }
+    /*
+    tmp -= sign * Trace(Hay[3*i+ip] * CG5SsCG5_xw[3*k+jp] * SnuHbz[3*j+kp]);
+    tmp -= sign * Trace(SnuHbz[3*i+ip] * CG5SsCG5_xw[3*k+jp] * Hay[3*j+kp]);
+    */
+  }
+  corr_sigma_4pt += tmp;
   return (corr_sigma_4pt);
 }
