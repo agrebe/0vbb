@@ -91,8 +91,8 @@ double nu_prop(int y1, int y2, int y3, int y4, // first point
 // color runs slower than spin
 int tensor_index(int c1, int c2, int c3, int c4,
                  int s1, int s2, int s3, int s4) {
-  //return ((((((c1 * 3 + c2) * 3 + c3) * 3 + c4) * 2 + s1) * 2 + s2) * 2 + s3) * 2 + s4;
-  return ((((((c1 * 3 + c2) * 2 + s1) * 2 + s2) * 3 + c3) * 3 + c4) * 2 + s3) * 2 + s4;
+  return ((((((c1 * 3 + c2) * 3 + c3) * 3 + c4) * 2 + s1) * 2 + s2) * 2 + s3) * 2 + s4;
+  //return ((((((c1 * 3 + c2) * 2 + s1) * 2 + s2) * 3 + c3) * 3 + c4) * 2 + s3) * 2 + s4;
 }
 
 // compute rank-4 tensor T
@@ -141,6 +141,18 @@ void compute_tensor(Vcomplex * T,
   // somehow we picked up a factor of V with all the FFTs
   for (int i = 0; i < 1296; i ++)
     T[i] *= (1.0 / volume);
+
+  // reorder T so that all color indices run slower than all sink indices
+  Vcomplex * buffer = (Vcomplex *) malloc(4 * 4 * 9 * sizeof(Vcomplex));
+  for (int c1 = 0; c1 < 9; c1 ++) {
+    memcpy(buffer, T, 4 * 4 * 9 * sizeof(Vcomplex));
+    for (int c = 0; c < 9; c ++) {
+      for (int s = 0; s < 4; s ++) {
+        memcpy(T + (c * 4 + s) * 4, buffer + (s * 9 + c) * 4, 4 * sizeof(Vcomplex));
+      }
+    }
+    T += 4 * 4 * 9;
+  }
 
   return;
 }
