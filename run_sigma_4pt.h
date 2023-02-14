@@ -10,3 +10,14 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
                        int nx,                    // spatial lattice extent
                        int block_size,            // sparsening at operator
                        int xc, int yc, int zc);   // sink coordinates
+
+Vcomplex two_traces(Vcomplex * T,
+                    int c1, int c2, int c3, int c4,
+                    WeylMat A, WeylMat B);
+Vcomplex one_trace(Vcomplex * T,
+                   int c1, int c2, int c3, int c4,
+                   WeylMat A, WeylMat B);
+
+Vcomplex one_trace_transposed(Vcomplex * T,
+                              int c1, int c2, int c3, int c4,
+                              WeylMat A, WeylMat B);

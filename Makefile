@@ -6,7 +6,8 @@ LDFLAGS = -L$(HOME)/work/stampede2/install/fftw-3.3.8/lib
 
 # create main executable
 qc: color_tensor.o gamma_container.o main.o read_prop.o \
-	run_4pt.o run_sigma_4pt.o
+	run_3pt.o run_sigma_3pt.o \
+	run_4pt.o run_sigma_4pt.o run_nnpp_4pt.o
 	$(CC) $(CFLAGS) *.o $(LDFLAGS) $(LIBS)
 
 %.o : %.C
