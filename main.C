@@ -102,29 +102,34 @@ int main() {
     Vcomplex corr_sigma_3pt[nt * nt * 10];
     for (int i = 0; i < nt * nt * 10; i ++)
       corr_sigma_3pt[i] = Vcomplex();
+    #pragma omp parallel for collapse(2)
     for (int sep = min_sep; sep <= max_sep; sep ++) {
-      // sep = (sink time) - (operator time)
-      // if sink wraps around lattice, add nt
-      int tm = (nt + tp - sep) % nt;
-      for (int xc = 0; xc < num_pt_props; xc ++) {
-        for (int yc = 0; yc < num_pt_props; yc ++) {
-          for (int zc = 0; zc < num_pt_props; zc ++) {
-            // loop over operator insertion time
-            // t = (operator time) - (source time)
-            for (int t = 3; t <= sep - 3; t ++) {
-              int ty = (tm + t) % nt;
+      for (int t = 3; t <= sep - 3; t ++) {
+        // sep = (sink time) - (operator time)
+        // if sink wraps around lattice, add nt
+        int tm = (nt + tp - sep) % nt;
+        int ty = (tm + t) % nt;
+        for (int xc = 0; xc < num_pt_props; xc ++) {
+          for (int yc = 0; yc < num_pt_props; yc ++) {
+            for (int zc = 0; zc < num_pt_props; zc ++) {
+              // loop over operator insertion time
+              // t = (operator time) - (source time)
               Vcomplex * T = (Vcomplex *) malloc(1296 * 5 * sizeof(Vcomplex));
               compute_tensor_3(T, wall_prop[tm], point_prop[xc][yc][zc],
                                nx, block_size_sparsen, ty);
               run_sigma_3pt(T, wall_prop[tm], corr_sigma_3pt, 
                             nt, nx, sep, tm, t,
                             xc * block_size, yc * block_size, zc * block_size);
+              free(T);
             }
           }
         }
       }
+    }
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
       // t = (operator time) - (source time)
       for (int t = 3; t <= sep - 3; t ++) {
+        int tm = (nt + tp - sep) % nt;
         fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
         for (int i = 0; i < 10; i ++) {
           Vcomplex element = corr_sigma_3pt[(sep * nt + t) * 10 + i];
@@ -135,7 +140,6 @@ int main() {
         fprintf(sigma_3pt, "\n");
       }
     }
-    
     // precompute all neutrino propagators and their Fourier transforms
     int nx_blocked = nx / block_size_sparsen;
     int sparse_vol = nx_blocked * nx_blocked * nx_blocked;
