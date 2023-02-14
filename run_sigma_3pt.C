@@ -40,51 +40,6 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
         * one_trace (T + index * 1296, i, ip, j, kp, CG5SsCG5[3*k+jp], idW);
     }
 
-    /*
-    for(int c1=0; c1<3; c1++){
-    for(int c2=0; c2<3; c2++){
-      // commonly used products of matrices
-      SpinMat prod0 = S_tmx[3*c1+ip] * CG5SsCG5[3*k+jp] * g5 * S_tpx_T[3*j+c1];
-      SpinMat prod1 = S_tmx[3*c1+ip] * CG5SsCG5[3*k+jp] * g5 * S_tpx_T[3*j+c2];
-      SpinMat prod2 = S_tmx[3*c2+kp] * g5 * S_tpx_T[3*i+c2];
-      SpinMat prod3 = S_tmx[3*c2+kp] * g5 * S_tpx_T[3*i+c1];
-
-      // SS
-      tmp[0] += sign * Trace( g5 * prod0 ) * Trace( g5 * prod2 ); 
-      tmp[1] += sign * Trace( g5 * prod1 * g5 * prod3);
-      tmp[2] += sign * Trace( g5 * prod1 ) * Trace( g5 * prod3 ); 
-      tmp[3] += sign * Trace( g5 * prod0 * g5 * prod2);
-      
-      // PP
-      tmp[4] += sign * Trace( prod0 ) * Trace( prod2 );                  
-      tmp[5] += sign * Trace( prod1 * prod3);                            
-      tmp[6] += sign * Trace( prod1 ) * Trace( prod3 );       
-      tmp[7] += sign * Trace( prod0 * prod2);
-      for(int mu=0; mu<4; mu++)
-      {
-        SpinMat gmu;
-        if (mu == 0){ gmu = gx; }
-        else if(mu == 1){ gmu = gy; }
-        else if(mu == 2){ gmu = gz; }
-        else if(mu == 3){ gmu = gt; }
-
-        SpinMat gvs = g5 * gmu;
-        SpinMat gas = g5 * gmu * g5;
-
-        // VV
-        tmp[8]  += sign * Trace( gvs * prod0 ) * Trace( gvs * prod2 ); 
-        tmp[9]  += sign * Trace( gvs * prod1 * gvs * prod3);   
-        tmp[10] += sign * Trace( gvs * prod1 ) * Trace( gvs * prod3 ); 
-        tmp[11] += sign * Trace( gvs * prod0 * gvs * prod2);
-
-        // AA
-        tmp[12] += sign * Trace( gas * prod0 ) * Trace( gas * prod2 ); 
-        tmp[13] += sign * Trace( gas * prod1 * gas * prod3);   
-        tmp[14] += sign * Trace( gas * prod1 ) * Trace( gas * prod3 );
-        tmp[15] += sign * Trace( gas * prod0 * gas * prod2);
-      } //mu
-    }} // c1, c2
-    */
   } // colors
   #pragma omp critical
   for (int i = 0; i < 10; i ++)
