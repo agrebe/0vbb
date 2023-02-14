@@ -3,8 +3,11 @@
 #include <string.h>
 #include "read_prop.h"
 #include "spin_mat.h"
+#include "run_3pt.h"
+#include "run_sigma_3pt.h"
 #include "run_4pt.h"
 #include "run_sigma_4pt.h"
+#include "run_nnpp_4pt.h"
 #include "color_tensor.h"
 #include "gamma_container.h"
 
@@ -18,7 +21,7 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 2;         // sparsening at sink
+  int block_size = 8;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 4;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
@@ -66,12 +69,16 @@ int main() {
   double dtime3 = omp_get_wtime();
   
   // 3-point and 4-point output files
+  FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
   FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
+  FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
 
   SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
                                                    * num_pt_props * num_pt_props * num_pt_props);
+  /*
   fftw_init_threads();
   fftw_plan_with_nthreads(omp_get_max_threads());
+  */
 
   for (int tp = sink_offset; tp < nt; tp += sink_sep) {
     SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
@@ -86,6 +93,46 @@ int main() {
           project_prop(point_prop[xc][yc][zc], nt, nx, 0);
           reverse_prop(point_prop[xc][yc][zc], nt, nx);
         }
+      }
+    }
+
+    // compute sigma 3-point function
+    // correlator should store source-sink sep and source-op sep
+    // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
+    Vcomplex corr_sigma_3pt[nt * nt * 10];
+    for (int i = 0; i < nt * nt * 10; i ++)
+      corr_sigma_3pt[i] = Vcomplex();
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      // sep = (sink time) - (operator time)
+      // if sink wraps around lattice, add nt
+      int tm = (nt + tp - sep) % nt;
+      for (int xc = 0; xc < num_pt_props; xc ++) {
+        for (int yc = 0; yc < num_pt_props; yc ++) {
+          for (int zc = 0; zc < num_pt_props; zc ++) {
+            // loop over operator insertion time
+            // t = (operator time) - (source time)
+            for (int t = 3; t <= sep - 3; t ++) {
+              int ty = (tm + t) % nt;
+              Vcomplex * T = (Vcomplex *) malloc(1296 * 5 * sizeof(Vcomplex));
+              compute_tensor_3(T, wall_prop[tm], point_prop[xc][yc][zc],
+                               nx, block_size_sparsen, ty);
+              run_sigma_3pt(T, wall_prop[tm], corr_sigma_3pt, 
+                            nt, nx, sep, tm, t,
+                            xc * block_size, yc * block_size, zc * block_size);
+            }
+          }
+        }
+      }
+      // t = (operator time) - (source time)
+      for (int t = 3; t <= sep - 3; t ++) {
+        fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
+        for (int i = 0; i < 10; i ++) {
+          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * 10 + i];
+          // flip sign if needed for AP boundary conditions
+          if (tm + sep >= nt) element *= -1;
+          fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(sigma_3pt, "\n");
       }
     }
     
@@ -123,6 +170,7 @@ int main() {
     // correlator should store source-sink sep and both source-op seps
     // access with corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
     Vcomplex corr_sigma_4pt[nt * nt * nt];
+    Vcomplex corr_nnpp_4pt[nt * nt * nt];
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       int tm = (nt + tp - sep) % nt;
       // loop over source positions
@@ -173,10 +221,11 @@ int main() {
                 }
               }
             }
+            #pragma omp parallel for collapse(2)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               // compute sequential propagator through one operator
-              WeylMat * Hvec_y = Hvec_F_forward + ty * sparse_vol * 4 * 9;
               for (int tx = 3; tx <= sep - 3; tx ++) {
+                WeylMat * Hvec_y = Hvec_F_forward + ty * sparse_vol * 4 * 9;
                 WeylMat * Hvec_x = Hvec_F_backward + tx * sparse_vol * 4 * 9;
 
                 // also compute rank-4 tensor containing current convolution
@@ -188,9 +237,15 @@ int main() {
                             = run_sigma_4pt(wall_prop[tm], T,
                               (tx + tm) % nt, tp, nx, block_size_sparsen,
                               xc * block_size, yc * block_size, zc * block_size);
+                Vcomplex corr_nnpp_4pt_value
+                            = run_nnpp_4pt(wall_prop[tm], T,
+                              (tx + tm) % nt, tp, nx, block_size_sparsen,
+                              xc * block_size, yc * block_size, zc * block_size);
                 // rescale based on electron mass
                 corr_sigma_4pt_value *= exp(me * abs(ty - tx));
                 corr_sigma_4pt[(sep * nt + ty) * nt + tx] += corr_sigma_4pt_value;
+                corr_nnpp_4pt_value *= exp(me * abs(ty - tx));
+                corr_nnpp_4pt[(sep * nt + ty) * nt + tx] += corr_nnpp_4pt_value;
                 free(T);
               }
             }
@@ -203,9 +258,11 @@ int main() {
       for (int ty = 3; ty <= sep - 3; ty ++) {
         for (int tx = 3; tx <= sep - 3; tx ++) {
           Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
+          Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
           // flip sign if needed for AP boundary conditions
           if (tm + sep >= nt) corr_sigma_4pt_value *= -1;
           fprintf(sigma_4pt, "%d %d %d %.10e %.10e\n", tx, ty, sep, corr_sigma_4pt_value.real(), corr_sigma_4pt_value.imag());
+          fprintf(nnpp_4pt, "%d %d %d %.10e %.10e\n", tx, ty, sep, corr_nnpp_4pt_value.real(), corr_nnpp_4pt_value.imag());
         }
       }
     }
@@ -214,7 +271,9 @@ int main() {
   double dtime4 = omp_get_wtime();
   
   // close 3-point and 4-point files
+  fclose(sigma_3pt);
   fclose(sigma_4pt);
+  fclose(nnpp_4pt);
 
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
