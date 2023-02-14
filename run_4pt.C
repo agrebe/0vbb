@@ -16,7 +16,7 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
   SpinMat gmu [4] = {gx, gy, gz, gt};
   SpinMat gmu_pl [4];
   for (int mu = 0; mu < 4; mu ++) gmu_pl[mu] = gmu[mu] * pl;
-  #pragma omp parallel for collapse(3)
+  //#pragma omp parallel for collapse(3)
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
       for (int x = 0; x < nx; x += block_size) {
