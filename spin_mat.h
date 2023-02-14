@@ -212,6 +212,14 @@ static WeylMat ExtractWeyl(SpinMat S)
   return WeylMat(*(__m512d*) &data);
 }
 
+// extract a WeylMat in some quadrant of a SpinMat
+// Note: This does not multiply by 2
+static WeylMat ExtractWeyl(SpinMat S, int r, int c)
+{
+  Vcomplex data [4] = {S(2*r,2*c), S(2*r,2*c+1), S(2*r+1,2*c), S(2*r+1,2*c+1)};
+  return WeylMat(*(__m512d*) &data);
+}
+
 static Vcomplex Trace(WeylMat mat) {
   Vcomplex * complex_array = (Vcomplex *) &mat;
   return complex_array[0] + complex_array[3];
