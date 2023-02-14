@@ -4,6 +4,7 @@
 #include "read_prop.h"
 #include "spin_mat.h"
 #include "run_3pt.h"
+#include "run_nnpp_3pt.h"
 #include "run_sigma_3pt.h"
 #include "run_4pt.h"
 #include "run_sigma_4pt.h"
@@ -71,6 +72,7 @@ int main() {
   // 3-point and 4-point output files
   FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
   FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
+  FILE* nnpp_3pt = fopen("../results/nnpp-3pt", "w");
   FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
 
   SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
@@ -99,9 +101,13 @@ int main() {
     // compute sigma 3-point function
     // correlator should store source-sink sep and source-op sep
     // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
-    Vcomplex corr_sigma_3pt[nt * nt * 10];
-    for (int i = 0; i < nt * nt * 10; i ++)
+    int num_currents = 5;
+    Vcomplex corr_sigma_3pt[nt * nt * num_currents * 2];
+    Vcomplex corr_nnpp_3pt[nt * nt * num_currents];
+    for (int i = 0; i < nt * nt * num_currents * 2; i ++)
       corr_sigma_3pt[i] = Vcomplex();
+    for (int i = 0; i < nt * nt * num_currents; i ++)
+      corr_nnpp_3pt[i] = Vcomplex();
     #pragma omp parallel for collapse(2)
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       for (int t = 3; t <= sep - 3; t ++) {
@@ -114,12 +120,15 @@ int main() {
             for (int zc = 0; zc < num_pt_props; zc ++) {
               // loop over operator insertion time
               // t = (operator time) - (source time)
-              Vcomplex * T = (Vcomplex *) malloc(1296 * 5 * sizeof(Vcomplex));
+              Vcomplex * T = (Vcomplex *) malloc(1296 * num_currents * sizeof(Vcomplex));
               compute_tensor_3(T, wall_prop[tm], point_prop[xc][yc][zc],
                                nx, block_size_sparsen, ty);
               run_sigma_3pt(T, wall_prop[tm], corr_sigma_3pt, 
                             nt, nx, sep, tm, t,
                             xc * block_size, yc * block_size, zc * block_size);
+              run_nnpp_3pt(T, wall_prop[tm], corr_nnpp_3pt, 
+                           nt, nx, sep, tm, t, num_currents,
+                           xc * block_size, yc * block_size, zc * block_size);
               free(T);
             }
           }
@@ -131,13 +140,22 @@ int main() {
       for (int t = 3; t <= sep - 3; t ++) {
         int tm = (nt + tp - sep) % nt;
         fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
-        for (int i = 0; i < 10; i ++) {
-          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * 10 + i];
+        // loop for sigma
+        for (int i = 0; i < num_currents * 2; i ++) {
+          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * num_currents * 2 + i];
           // flip sign if needed for AP boundary conditions
           if (tm + sep >= nt) element *= -1;
           fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
         }
         fprintf(sigma_3pt, "\n");
+
+        fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
+        // loop for nn->pp
+        for (int i = 0; i < num_currents; i ++) {
+          Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * num_currents + i];
+          fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(nnpp_3pt, "\n");
       }
     }
     // precompute all neutrino propagators and their Fourier transforms
@@ -239,11 +257,11 @@ int main() {
                                nx, nt, block_size_sparsen, global_sparsening);
                 Vcomplex corr_sigma_4pt_value
                             = run_sigma_4pt(wall_prop[tm], T,
-                              (tx + tm) % nt, tp, nx, block_size_sparsen,
+                              tp, nx,
                               xc * block_size, yc * block_size, zc * block_size);
                 Vcomplex corr_nnpp_4pt_value
                             = run_nnpp_4pt(wall_prop[tm], T,
-                              (tx + tm) % nt, tp, nx, block_size_sparsen,
+                              tp, nx,
                               xc * block_size, yc * block_size, zc * block_size);
                 // rescale based on electron mass
                 corr_sigma_4pt_value *= exp(me * abs(ty - tx));
@@ -277,6 +295,7 @@ int main() {
   // close 3-point and 4-point files
   fclose(sigma_3pt);
   fclose(sigma_4pt);
+  fclose(nnpp_3pt);
   fclose(nnpp_4pt);
 
   printf("----------------------------------------------------------------------\n");

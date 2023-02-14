@@ -58,12 +58,9 @@ Vcomplex one_trace_transposed(Vcomplex * T,
 
 Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
                        Vcomplex * T,              // big ol' tensor
-                       int tx,                    // time of operator
                        int tp,                    // time of sink
                        int nx,                    // spatial lattice extent
-                       int block_size,            // sparsening at operator
                        int xc, int yc, int zc) {  // sink coordinates
-  Vcomplex one = Vcomplex(1, 0);
   WeylMat idW = ExtractWeyl(id) * 0.5;
   Vcomplex corr_sigma_4pt = Vcomplex();
 
@@ -71,7 +68,6 @@ Vcomplex run_sigma_4pt(SpinMat * wall_prop,       // prop from source
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * Ss_xw = wall_prop + 9 * loc;
   // loop over operator insertions
-  int nx_blocked = nx / block_size;
   Vcomplex tmp;
   SpinMat * Sl_xy = wall_prop + 9 * loc;
   SpinMat T_CG5Ss [9];

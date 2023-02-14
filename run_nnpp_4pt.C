@@ -3,10 +3,8 @@
 
 Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
                       Vcomplex * T,              // big ol' tensor
-                      int tx,                    // time of operator
                       int tp,                    // time of sink
                       int nx,                    // spatial lattice extent
-                      int block_size,            // sparsening at operator
                       int xc, int yc, int zc) {  // sink coordinates
   WeylMat idW = ExtractWeyl(id) * 0.5;
   Vcomplex corr_nnpp_4pt = Vcomplex();
@@ -23,7 +21,6 @@ Vcomplex run_nnpp_4pt(SpinMat * wall_prop,       // prop from source
     Sl_xw_T_CG[c] = Sl_xw_T[c] * cgs;
   }
   // loop over operator insertions
-  int nx_blocked = nx / block_size;
   for(int ii=0; ii<1296; ii++) 
   {
     Vcomplex tmp;
