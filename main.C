@@ -1,16 +1,24 @@
+// external libraries
 #include <omp.h>
 #include <fftw3.h>
 #include <string.h>
+
+// miscellaneous helper functions
 #include "read_prop.h"
 #include "spin_mat.h"
+#include "color_tensor.h"
+#include "gamma_container.h"
+#include "run_meson_2pt.h"
+
+// 2-point, 3-point, and 4-point contractions
+#include "run_baryon_2pt.h"
+#include "run_dibaryon_2pt.h"
 #include "run_3pt.h"
 #include "run_nnpp_3pt.h"
 #include "run_sigma_3pt.h"
 #include "run_4pt.h"
 #include "run_sigma_4pt.h"
 #include "run_nnpp_4pt.h"
-#include "color_tensor.h"
-#include "gamma_container.h"
 
 int main() {
   // lattice size variables
@@ -66,6 +74,37 @@ int main() {
 
   double dtime2 = omp_get_wtime();
 
+  // output files
+  FILE* pion_2pt = fopen("../results/pion-2pt-WW", "w");
+  FILE* neutron_2pt = fopen("../results/nucleon-2pt-WP", "w");
+  FILE* dineutron_2pt = fopen("../results/dinucleon-2pt-WP", "w");
+  // compute pion correlator (for testing)
+  Vcomplex corr [nt];
+  // loop over source times
+  for (int tm = 0; tm < nt; tm ++) {
+    run_pion_correlator_wsink(wall_sink_prop[tm], corr, nt, 1);
+    for (int t = 0; t < nt; t ++) 
+      fprintf(pion_2pt, "%d %d %.10e\n", tm, t, corr[(t+tm)%nt].real());
+
+    // compute neutron correlator
+    run_neutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
+    // flip sign (due to AP boundary conditions) if tp = t + tm > nt
+    for (int t = 0; t < nt; t ++) {
+      double sign = (t + tm >= nt) ? -1 : 1;
+      fprintf(neutron_2pt, "%d %d %.10e %.10e\n", tm, t,
+              sign * corr[(t+tm)%nt].real(), sign * corr[(t+tm)%nt].imag());
+    }
+
+    // compute dineutron correlator
+    run_dineutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
+    for (int t = 0; t < nt; t ++) 
+      fprintf(dineutron_2pt, "%d %d %.10e %.10e\n", tm, t, corr[(t+tm)%nt].real(), corr[(t+tm)%nt].imag());
+  }
+
+  // close 2-point output files
+  fclose(pion_2pt);
+  fclose(neutron_2pt);
+  fclose(dineutron_2pt);
 
   double dtime3 = omp_get_wtime();
   
