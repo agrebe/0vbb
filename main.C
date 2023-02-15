@@ -23,16 +23,16 @@
 int main() {
   // lattice size variables
   int nt = 48;
-  int nx = 8;
+  int nx = 16;
   int vol = nt * nx * nx * nx;
   
   // electron mass
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 8;         // sparsening at sink
+  int block_size = 4;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
-  int global_sparsening = 4;  // ratio between nx and actual size of lattice
+  int global_sparsening = 2;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
   // source and sink time ranges
@@ -57,7 +57,7 @@ int main() {
 
   // read in propagators
   SpinMat * wall_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * num_sources);
-  SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * num_sources);
+  SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(wall_sink_prop_size * sizeof(SpinMat) * num_sources);
   SpinMat * wall_prop [nt];
   SpinMat * wall_sink_prop [nt];
   for (int tm = 0; tm < nt; tm ++) {
@@ -107,6 +107,7 @@ int main() {
   fclose(dineutron_2pt);
 
   double dtime3 = omp_get_wtime();
+  double time_reading_points, time_3_point, time_4_point;
   
   // 3-point and 4-point output files
   FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
@@ -122,6 +123,7 @@ int main() {
   */
 
   for (int tp = sink_offset; tp < nt; tp += sink_sep) {
+    time_reading_points -= omp_get_wtime();
     SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
     for (int xc = 0; xc < num_pt_props; xc ++) {
       for (int yc = 0; yc < num_pt_props; yc ++) {
@@ -136,6 +138,8 @@ int main() {
         }
       }
     }
+    time_reading_points += omp_get_wtime();
+    time_3_point -= omp_get_wtime();
 
     // compute sigma 3-point function
     // correlator should store source-sink sep and source-op sep
@@ -197,6 +201,10 @@ int main() {
         fprintf(nnpp_3pt, "\n");
       }
     }
+
+    time_3_point += omp_get_wtime();
+    time_4_point -= omp_get_wtime();
+
     // precompute all neutrino propagators and their Fourier transforms
     int nx_blocked = nx / block_size_sparsen;
     int sparse_vol = nx_blocked * nx_blocked * nx_blocked;
@@ -226,12 +234,31 @@ int main() {
       fftw_execute(nu_FFT);
       fftw_destroy_plan(nu_FFT);
     }
+    free(nu);
+
+    int num_ffts = 4 * 9 * 4; // mu, color^2, spin^2
+    fftw_plan Hvec_FFT_forward = fftw_plan_many_dft(3, dims, num_ffts,
+               (fftw_complex *) 0x0,
+               dims, num_ffts, 1,
+               (fftw_complex *) 0x0, dims, num_ffts, 1,
+               FFTW_FORWARD, FFTW_ESTIMATE);
+
+    // We want to compute Hx(-x) * (Hy * Snu)
+    // Flipping the sign of the variable is equivalent 
+    // to changing FFTW_FORWARD -> FFTW_BACKWARD
+    // These are all actually forward FFTs (position -> momentum)
+    fftw_plan Hvec_FFT_backward = fftw_plan_many_dft(3, dims, num_ffts,
+               (fftw_complex *) 0x0,
+               dims, num_ffts, 1,
+               (fftw_complex *) 0x0, dims, num_ffts, 1,
+               FFTW_BACKWARD, FFTW_ESTIMATE);
 
     // compute sigma and nn->pp 4-point functions
     // correlator should store source-sink sep and both source-op seps
     // access with corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
     Vcomplex corr_sigma_4pt[nt * nt * nt];
     Vcomplex corr_nnpp_4pt[nt * nt * nt];
+    #pragma omp parallel for num_threads(8)
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       int tm = (nt + tp - sep) % nt;
       // loop over source positions
@@ -240,34 +267,19 @@ int main() {
           for (int zc = 0; zc < num_pt_props; zc ++) {
             // precompute all Hvec
             int offset = sparse_vol * 4 * 9;
-            int num_ffts = 4 * 9 * 4; // mu, color^2, spin^2
             WeylMat * Hvec = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
             WeylMat * Hvec_F_forward = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
             WeylMat * Hvec_F_backward = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
+            #pragma omp parallel for num_threads(12)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               assemble_Hvec(Hvec + ty * offset,
                             wall_prop[tm], point_prop[xc][yc][zc], nx, 
                             block_size_sparsen, tm, tp, (tm + ty) % nt);
 
-              // We want to compute Hx(-x) * (Hy * Snu)
-              // Flipping the sign of the variable is equivalent 
-              // to changing FFTW_FORWARD -> FFTW_BACKWARD
-              // These are all actually forward FFTs (position -> momentum)
-              fftw_plan Hvec_FFT = fftw_plan_many_dft(3, dims, num_ffts,
-                         (fftw_complex *) (Hvec + offset * ty),
-                         dims, num_ffts, 1,
-                         (fftw_complex *) (Hvec_F_forward + offset * ty), dims, num_ffts, 1,
-                         FFTW_FORWARD, FFTW_ESTIMATE);
-              fftw_execute(Hvec_FFT);
-              fftw_destroy_plan(Hvec_FFT);
-
-              Hvec_FFT = fftw_plan_many_dft(3, dims, num_ffts,
-                         (fftw_complex *) (Hvec + offset * ty),
-                         dims, num_ffts, 1,
-                         (fftw_complex *) (Hvec_F_backward + offset * ty), dims, num_ffts, 1,
-                         FFTW_BACKWARD, FFTW_ESTIMATE);
-              fftw_execute(Hvec_FFT);
-              fftw_destroy_plan(Hvec_FFT);
+              fftw_execute_dft(Hvec_FFT_forward, (fftw_complex *) (Hvec + offset * ty), 
+                               (fftw_complex *) (Hvec_F_forward + offset * ty));
+              fftw_execute_dft(Hvec_FFT_backward, (fftw_complex *) (Hvec + offset * ty), 
+                               (fftw_complex *) (Hvec_F_backward + offset * ty));
 
               // take the correct linear combinations of Hvec_y (forward) and Hvec_x (backward)
               // to produce the correct electron spins
@@ -282,7 +294,7 @@ int main() {
                 }
               }
             }
-            #pragma omp parallel for collapse(2)
+            #pragma omp parallel for collapse(2) num_threads(12)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               // compute sequential propagator through one operator
               for (int tx = 3; tx <= sep - 3; tx ++) {
@@ -316,6 +328,11 @@ int main() {
           }
         }
       }
+    }
+    free(nu_F);
+    // execute the file I/O in serial after all threads finish
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      int tm = (nt + tp - sep) % nt;
       for (int ty = 3; ty <= sep - 3; ty ++) {
         for (int tx = 3; tx <= sep - 3; tx ++) {
           Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
@@ -327,6 +344,9 @@ int main() {
         }
       }
     }
+    fftw_destroy_plan(Hvec_FFT_forward);
+    fftw_destroy_plan(Hvec_FFT_backward);
+    time_4_point += omp_get_wtime();
   }
 
   double dtime4 = omp_get_wtime();
@@ -336,11 +356,18 @@ int main() {
   fclose(sigma_4pt);
   fclose(nnpp_3pt);
   fclose(nnpp_4pt);
+  free(wall_prop_storage);
+  free(wall_sink_prop_storage);
+  free(point_prop_storage);
 
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
   printf("1. Reading propagators:                              %17.10e s\n", dtime2 - dtime1);
   printf("2. 2-point correlators:                              %17.10e s\n", dtime3 - dtime2);
   printf("3. 3-point and 4-point correlators:                  %17.10e s\n", dtime4 - dtime3);
+  printf("\n");
+  printf("  3A. Reading point props:                           %17.10e s\n", time_reading_points);
+  printf("  3B. 3-point correlators:                           %17.10e s\n", time_3_point);
+  printf("  3C. 4-point correlators:                           %17.10e s\n", time_4_point);
   printf("----------------------------------------------------------------------\n");
 }
