@@ -30,7 +30,7 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 16;         // sparsening at sink
+  int block_size = 8;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 2;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
@@ -170,26 +170,10 @@ int main() {
                                                    * num_pt_props * num_pt_props * num_pt_props);
 
   for (int tp = sink_offset; tp < nt; tp += sink_sep) {
-    time_reading_points -= omp_get_wtime();
+    // storage for props and 3- and 4-point functions
     SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
-    for (int xc = 0; xc < num_pt_props; xc ++) {
-      for (int yc = 0; yc < num_pt_props; yc ++) {
-        for (int zc = 0; zc < num_pt_props; zc ++) {
-          point_prop[xc][yc][zc] = point_prop_storage + prop_size * ((xc * num_pt_props + yc) * num_pt_props + zc);
-          char point_filename [100];
-          sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
-          read_prop(point_filename, point_prop[xc][yc][zc], nt, nx);
-          rescale_prop(point_prop[xc][yc][zc], nt, nx, 0.5);
-          project_prop(point_prop[xc][yc][zc], nt, nx, 0);
-          reverse_prop(point_prop[xc][yc][zc], nt, nx);
-        }
-      }
-    }
-    time_reading_points += omp_get_wtime();
-    time_3_point -= omp_get_wtime();
 
-    // compute sigma 3-point function
-    // correlator should store source-sink sep and source-op sep
+    // 3-point correlator should store source-sink sep and source-op sep
     // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
     int num_currents = 5;
     Vcomplex corr_sigma_3pt[nt * nt * num_currents * 2];
@@ -198,17 +182,36 @@ int main() {
       corr_sigma_3pt[i] = Vcomplex();
     for (int i = 0; i < nt * nt * num_currents; i ++)
       corr_nnpp_3pt[i] = Vcomplex();
-    #pragma omp parallel for collapse(2)
-    for (int sep = min_sep; sep <= max_sep; sep ++) {
-      for (int t = 3; t <= max_sep - 3; t ++) {
-        if (t > sep - 3) continue;
-        // sep = (sink time) - (operator time)
-        // if sink wraps around lattice, add nt
-        int tm = (nt + tp - sep) % nt;
-        int ty = (tm + t) % nt;
-        for (int xc = 0; xc < num_pt_props; xc ++) {
-          for (int yc = 0; yc < num_pt_props; yc ++) {
-            for (int zc = 0; zc < num_pt_props; zc ++) {
+
+    // 4-point correlator should store source-sink sep and both source-op seps
+    // access with corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
+    Vcomplex corr_sigma_4pt[nt * nt * nt];
+    Vcomplex corr_nnpp_4pt[nt * nt * nt];
+
+    for (int xc = 0; xc < num_pt_props; xc ++) {
+      for (int yc = 0; yc < num_pt_props; yc ++) {
+        for (int zc = 0; zc < num_pt_props; zc ++) {
+          time_reading_points -= omp_get_wtime();
+          point_prop[xc][yc][zc] = point_prop_storage + prop_size * ((xc * num_pt_props + yc) * num_pt_props + zc);
+          char point_filename [100];
+          sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
+          read_prop(point_filename, point_prop[xc][yc][zc], nt, nx);
+          rescale_prop(point_prop[xc][yc][zc], nt, nx, 0.5);
+          project_prop(point_prop[xc][yc][zc], nt, nx, 0);
+          reverse_prop(point_prop[xc][yc][zc], nt, nx);
+          time_reading_points += omp_get_wtime();
+
+
+          // compute sigma 3-point function
+          time_3_point -= omp_get_wtime();
+          #pragma omp parallel for collapse(2)
+          for (int sep = min_sep; sep <= max_sep; sep ++) {
+            for (int t = 3; t <= max_sep - 3; t ++) {
+              if (t > sep - 3) continue;
+              // sep = (sink time) - (operator time)
+              // if sink wraps around lattice, add nt
+              int tm = (nt + tp - sep) % nt;
+              int ty = (tm + t) % nt;
               // loop over operator insertion time
               // t = (operator time) - (source time)
               Vcomplex * T = (Vcomplex *) malloc(1296 * num_currents * sizeof(Vcomplex));
@@ -223,26 +226,14 @@ int main() {
               free(T);
             }
           }
-        }
-      }
-    }
+          time_3_point += omp_get_wtime();
+          
 
-    time_3_point += omp_get_wtime();
-    time_4_point -= omp_get_wtime();
-
-
-    // compute sigma and nn->pp 4-point functions
-    // correlator should store source-sink sep and both source-op seps
-    // access with corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
-    Vcomplex corr_sigma_4pt[nt * nt * nt];
-    Vcomplex corr_nnpp_4pt[nt * nt * nt];
-    #pragma omp parallel for num_threads(8)
-    for (int sep = min_sep; sep <= max_sep; sep ++) {
-      int tm = (nt + tp - sep) % nt;
-      // loop over source positions
-      for (int xc = 0; xc < num_pt_props; xc ++) {
-        for (int yc = 0; yc < num_pt_props; yc ++) {
-          for (int zc = 0; zc < num_pt_props; zc ++) {
+          // compute sigma and nn->pp 4-point functions
+          time_4_point -= omp_get_wtime();
+          #pragma omp parallel for num_threads(8)
+          for (int sep = min_sep; sep <= max_sep; sep ++) {
+            int tm = (nt + tp - sep) % nt;
             // precompute all Hvec
             int offset = sparse_vol * 4 * 9;
             WeylMat * Hvec = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
@@ -304,10 +295,12 @@ int main() {
             free(Hvec_F_forward);
             free(Hvec_F_backward);
           }
+          time_4_point += omp_get_wtime();
         }
       }
     }
-    time_4_point += omp_get_wtime();
+
+
     // execute the file I/O in serial after all threads finish
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       // t = (operator time) - (source time)
