@@ -30,7 +30,7 @@ int main() {
   double me = 3.761159784263958e-04;
 
   // sparsening factors
-  int block_size = 4;         // sparsening at sink
+  int block_size = 16;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 2;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
@@ -109,6 +109,57 @@ int main() {
   double dtime3 = omp_get_wtime();
   double time_reading_points, time_3_point, time_4_point;
   
+  // plan all the FFTs and compute the neutrino propagator FFT
+  // precompute all neutrino propagators and their Fourier transforms
+  time_4_point -= omp_get_wtime();
+  int nx_blocked = nx / block_size_sparsen;
+  int sparse_vol = nx_blocked * nx_blocked * nx_blocked;
+  int dims [3] = {nx_blocked, nx_blocked, nx_blocked};
+  double * nu = (double *) malloc(2 * sparse_vol * sizeof(double));
+  fftw_complex * nu_F = (fftw_complex *) malloc(sparse_vol * sizeof(fftw_complex) * nt);
+  for (int dt = 0; dt <= max_sep; dt ++) {
+    for (int y3 = 0; y3 < nx; y3 += block_size_sparsen) {
+      for (int y2 = 0; y2 < nx; y2 += block_size_sparsen) {
+        for (int y1 = 0; y1 < nx; y1 += block_size_sparsen) {
+          int idy = ((y3 / block_size_sparsen) * nx_blocked
+              + (y2 / block_size_sparsen)) * nx_blocked
+              + (y1 / block_size_sparsen);
+          double nu_value = nu_prop(y1, y2, y3, dt,
+                                    0, 0, 0, 0,
+                                    nx, nt, global_sparsening);
+          nu[idy * 2] = nu_value;
+          nu[idy * 2 + 1] = 0;
+        }
+      }
+    }
+    fftw_plan nu_FFT = fftw_plan_many_dft(3, dims, 1,
+                         (fftw_complex *) nu,
+                         dims, 1, 0,
+                         nu_F + sparse_vol * dt, dims, 1, 0,
+                         FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(nu_FFT);
+    fftw_destroy_plan(nu_FFT);
+  }
+  free(nu);
+
+  int num_ffts = 4 * 9 * 4; // mu, color^2, spin^2
+  fftw_plan Hvec_FFT_forward = fftw_plan_many_dft(3, dims, num_ffts,
+             (fftw_complex *) 0x0,
+             dims, num_ffts, 1,
+             (fftw_complex *) 0x0, dims, num_ffts, 1,
+             FFTW_FORWARD, FFTW_ESTIMATE);
+
+  // We want to compute Hx(-x) * (Hy * Snu)
+  // Flipping the sign of the variable is equivalent 
+  // to changing FFTW_FORWARD -> FFTW_BACKWARD
+  // These are all actually forward FFTs (position -> momentum)
+  fftw_plan Hvec_FFT_backward = fftw_plan_many_dft(3, dims, num_ffts,
+             (fftw_complex *) 0x0,
+             dims, num_ffts, 1,
+             (fftw_complex *) 0x0, dims, num_ffts, 1,
+             FFTW_BACKWARD, FFTW_ESTIMATE);
+  time_4_point += omp_get_wtime();
+
   // 3-point and 4-point output files
   FILE* sigma_3pt = fopen("../results/sigma-3pt", "w");
   FILE* sigma_4pt = fopen("../results/sigma-4pt", "w");
@@ -117,10 +168,6 @@ int main() {
 
   SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
                                                    * num_pt_props * num_pt_props * num_pt_props);
-  /*
-  fftw_init_threads();
-  fftw_plan_with_nthreads(omp_get_max_threads());
-  */
 
   for (int tp = sink_offset; tp < nt; tp += sink_sep) {
     time_reading_points -= omp_get_wtime();
@@ -153,7 +200,8 @@ int main() {
       corr_nnpp_3pt[i] = Vcomplex();
     #pragma omp parallel for collapse(2)
     for (int sep = min_sep; sep <= max_sep; sep ++) {
-      for (int t = 3; t <= sep - 3; t ++) {
+      for (int t = 3; t <= max_sep - 3; t ++) {
+        if (t > sep - 3) continue;
         // sep = (sink time) - (operator time)
         // if sink wraps around lattice, add nt
         int tm = (nt + tp - sep) % nt;
@@ -178,80 +226,10 @@ int main() {
         }
       }
     }
-    for (int sep = min_sep; sep <= max_sep; sep ++) {
-      // t = (operator time) - (source time)
-      for (int t = 3; t <= sep - 3; t ++) {
-        int tm = (nt + tp - sep) % nt;
-        fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
-        // loop for sigma
-        for (int i = 0; i < num_currents * 2; i ++) {
-          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * num_currents * 2 + i];
-          // flip sign if needed for AP boundary conditions
-          if (tm + sep >= nt) element *= -1;
-          fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
-        }
-        fprintf(sigma_3pt, "\n");
-
-        fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
-        // loop for nn->pp
-        for (int i = 0; i < num_currents; i ++) {
-          Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * num_currents + i];
-          fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
-        }
-        fprintf(nnpp_3pt, "\n");
-      }
-    }
 
     time_3_point += omp_get_wtime();
     time_4_point -= omp_get_wtime();
 
-    // precompute all neutrino propagators and their Fourier transforms
-    int nx_blocked = nx / block_size_sparsen;
-    int sparse_vol = nx_blocked * nx_blocked * nx_blocked;
-    int dims [3] = {nx_blocked, nx_blocked, nx_blocked};
-    double * nu = (double *) malloc(2 * sparse_vol * sizeof(double));
-    fftw_complex * nu_F = (fftw_complex *) malloc(sparse_vol * sizeof(fftw_complex) * nt);
-    for (int dt = 0; dt <= max_sep; dt ++) {
-      for (int y3 = 0; y3 < nx; y3 += block_size_sparsen) {
-        for (int y2 = 0; y2 < nx; y2 += block_size_sparsen) {
-          for (int y1 = 0; y1 < nx; y1 += block_size_sparsen) {
-            int idy = ((y3 / block_size_sparsen) * nx_blocked
-                + (y2 / block_size_sparsen)) * nx_blocked
-                + (y1 / block_size_sparsen);
-            double nu_value = nu_prop(y1, y2, y3, dt,
-                                      0, 0, 0, 0,
-                                      nx, nt, global_sparsening);
-            nu[idy * 2] = nu_value;
-            nu[idy * 2 + 1] = 0;
-          }
-        }
-      }
-      fftw_plan nu_FFT = fftw_plan_many_dft(3, dims, 1,
-                           (fftw_complex *) nu,
-                           dims, 1, 0,
-                           nu_F + sparse_vol * dt, dims, 1, 0,
-                           FFTW_FORWARD, FFTW_ESTIMATE);
-      fftw_execute(nu_FFT);
-      fftw_destroy_plan(nu_FFT);
-    }
-    free(nu);
-
-    int num_ffts = 4 * 9 * 4; // mu, color^2, spin^2
-    fftw_plan Hvec_FFT_forward = fftw_plan_many_dft(3, dims, num_ffts,
-               (fftw_complex *) 0x0,
-               dims, num_ffts, 1,
-               (fftw_complex *) 0x0, dims, num_ffts, 1,
-               FFTW_FORWARD, FFTW_ESTIMATE);
-
-    // We want to compute Hx(-x) * (Hy * Snu)
-    // Flipping the sign of the variable is equivalent 
-    // to changing FFTW_FORWARD -> FFTW_BACKWARD
-    // These are all actually forward FFTs (position -> momentum)
-    fftw_plan Hvec_FFT_backward = fftw_plan_many_dft(3, dims, num_ffts,
-               (fftw_complex *) 0x0,
-               dims, num_ffts, 1,
-               (fftw_complex *) 0x0, dims, num_ffts, 1,
-               FFTW_BACKWARD, FFTW_ESTIMATE);
 
     // compute sigma and nn->pp 4-point functions
     // correlator should store source-sink sep and both source-op seps
@@ -329,8 +307,31 @@ int main() {
         }
       }
     }
-    free(nu_F);
+    time_4_point += omp_get_wtime();
     // execute the file I/O in serial after all threads finish
+    for (int sep = min_sep; sep <= max_sep; sep ++) {
+      // t = (operator time) - (source time)
+      for (int t = 3; t <= sep - 3; t ++) {
+        int tm = (nt + tp - sep) % nt;
+        fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
+        // loop for sigma
+        for (int i = 0; i < num_currents * 2; i ++) {
+          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * num_currents * 2 + i];
+          // flip sign if needed for AP boundary conditions
+          if (tm + sep >= nt) element *= -1;
+          fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(sigma_3pt, "\n");
+
+        fprintf(nnpp_3pt, "%d %d %d ", sep, tm, t);
+        // loop for nn->pp
+        for (int i = 0; i < num_currents; i ++) {
+          Vcomplex element = corr_nnpp_3pt[(sep * nt + t) * num_currents + i];
+          fprintf(nnpp_3pt, "%.10e %.10e ", element.real(), element.imag());
+        }
+        fprintf(nnpp_3pt, "\n");
+      }
+    }
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       int tm = (nt + tp - sep) % nt;
       for (int ty = 3; ty <= sep - 3; ty ++) {
@@ -344,10 +345,11 @@ int main() {
         }
       }
     }
-    fftw_destroy_plan(Hvec_FFT_forward);
-    fftw_destroy_plan(Hvec_FFT_backward);
-    time_4_point += omp_get_wtime();
   }
+
+  free(nu_F);
+  fftw_destroy_plan(Hvec_FFT_forward);
+  fftw_destroy_plan(Hvec_FFT_backward);
 
   double dtime4 = omp_get_wtime();
   
