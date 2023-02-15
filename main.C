@@ -166,22 +166,15 @@ int main() {
   FILE* nnpp_3pt = fopen("../results/nnpp-3pt", "w");
   FILE* nnpp_4pt = fopen("../results/nnpp-4pt", "w");
 
-  SpinMat * point_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat)
-                                                   * num_pt_props * num_pt_props * num_pt_props);
+  SpinMat * point_prop = (SpinMat*) malloc(prop_size * sizeof(SpinMat));
 
   for (int tp = sink_offset; tp < nt; tp += sink_sep) {
-    // storage for props and 3- and 4-point functions
-    SpinMat * point_prop [num_pt_props][num_pt_props][num_pt_props];
 
     // 3-point correlator should store source-sink sep and source-op sep
     // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
     int num_currents = 5;
     Vcomplex corr_sigma_3pt[nt * nt * num_currents * 2];
     Vcomplex corr_nnpp_3pt[nt * nt * num_currents];
-    for (int i = 0; i < nt * nt * num_currents * 2; i ++)
-      corr_sigma_3pt[i] = Vcomplex();
-    for (int i = 0; i < nt * nt * num_currents; i ++)
-      corr_nnpp_3pt[i] = Vcomplex();
 
     // 4-point correlator should store source-sink sep and both source-op seps
     // access with corr_sigma_4pt[((tp-tm) * nt + (ty-tm)) * nt + (tx-tm)]
@@ -192,13 +185,12 @@ int main() {
       for (int yc = 0; yc < num_pt_props; yc ++) {
         for (int zc = 0; zc < num_pt_props; zc ++) {
           time_reading_points -= omp_get_wtime();
-          point_prop[xc][yc][zc] = point_prop_storage + prop_size * ((xc * num_pt_props + yc) * num_pt_props + zc);
           char point_filename [100];
           sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
-          read_prop(point_filename, point_prop[xc][yc][zc], nt, nx);
-          rescale_prop(point_prop[xc][yc][zc], nt, nx, 0.5);
-          project_prop(point_prop[xc][yc][zc], nt, nx, 0);
-          reverse_prop(point_prop[xc][yc][zc], nt, nx);
+          read_prop(point_filename, point_prop, nt, nx);
+          rescale_prop(point_prop, nt, nx, 0.5);
+          project_prop(point_prop, nt, nx, 0);
+          reverse_prop(point_prop, nt, nx);
           time_reading_points += omp_get_wtime();
 
 
@@ -215,7 +207,7 @@ int main() {
               // loop over operator insertion time
               // t = (operator time) - (source time)
               Vcomplex * T = (Vcomplex *) malloc(1296 * num_currents * sizeof(Vcomplex));
-              compute_tensor_3(T, wall_prop[tm], point_prop[xc][yc][zc],
+              compute_tensor_3(T, wall_prop[tm], point_prop,
                                nx, block_size_sparsen, ty);
               run_sigma_3pt(T, wall_prop[tm], corr_sigma_3pt, 
                             nt, nx, sep, tm, t,
@@ -242,7 +234,7 @@ int main() {
             #pragma omp parallel for num_threads(12)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               assemble_Hvec(Hvec + ty * offset,
-                            wall_prop[tm], point_prop[xc][yc][zc], nx, 
+                            wall_prop[tm], point_prop, nx, 
                             block_size_sparsen, tm, tp, (tm + ty) % nt);
 
               fftw_execute_dft(Hvec_FFT_forward, (fftw_complex *) (Hvec + offset * ty), 
@@ -353,7 +345,7 @@ int main() {
   fclose(nnpp_4pt);
   free(wall_prop_storage);
   free(wall_sink_prop_storage);
-  free(point_prop_storage);
+  free(point_prop);
 
   printf("----------------------------------------------------------------------\n");
   printf("0. Initialization:                                   %17.10e s\n", dtime1 - dtime0);
