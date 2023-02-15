@@ -153,6 +153,7 @@ void compute_tensor(Vcomplex * T,
     }
     T += 4 * 4 * 9;
   }
+  free(buffer);
 
   return;
 }

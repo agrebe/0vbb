@@ -44,6 +44,7 @@ void reverse_prop(SpinMat * prop, int nt, int nx) {
     for (int c1 = 0; c1 < 3; c1 ++)
       for (int c2 = 0; c2 < 3; c2 ++)
         wilsonMat[3*c1+c2] = g5 * buffer[3*c2+c1].hconj() * g5;
+    free(buffer);
   }
 }
 
