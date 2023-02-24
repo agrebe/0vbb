@@ -7,13 +7,14 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
                    int sep,                  // sink - source time
                    int tm,                   // source time
                    int t,                    // operator - source time
+                  int num_currents,         // {SS, PP, VV, AA, TT}
                    int xc, int yc, int zc) { // sink coordinates
   WeylMat idW = ExtractWeyl(id) * 0.5;
   // extract propagator from source to sink
   int tp = (tm + sep) % nt;
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
-  Vcomplex tmp[10];
+  Vcomplex tmp[num_currents * 2];
   // compute operator time
   int tx = (t + tm) % nt;
   WeylMat CG5SsCG5 [9];
@@ -33,7 +34,7 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
     const double sign = color_idx_1[7*ii+6];
 
     // loop over index of {SS, PP, VV, AA, TT}
-    for (int index = 0; index < 5; index ++) {
+    for (int index = 0; index < num_currents; index ++) {
       tmp[0 + index * 2] += sign 
         * two_traces(T + index * 1296, j, ip, i, kp, CG5SsCG5[3*k+jp], idW);
       tmp[1 + index * 2] += sign 
@@ -42,6 +43,6 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
 
   } // colors
   #pragma omp critical
-  for (int i = 0; i < 10; i ++)
-    corr[(sep * nt + t) * 10 + i] += tmp[i];
+  for (int i = 0; i < 2 * num_currents; i ++)
+    corr[(sep * nt + t) * 2 * num_currents + i] += tmp[i];
 }

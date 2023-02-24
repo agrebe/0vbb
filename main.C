@@ -209,7 +209,7 @@ int main(int argc, char ** argv) {
 
     // 3-point correlator should store source-sink sep and source-op sep
     // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
-    int num_currents = 5;
+    int num_currents = 9;
     Vcomplex corr_sigma_3pt[nt * nt * num_currents * 2];
     Vcomplex corr_nnpp_3pt[nt * nt * num_currents];
 
@@ -278,7 +278,7 @@ int main(int argc, char ** argv) {
               compute_tensor_3(T, wall_prop[tm], point_prop,
                                nx, block_size_sparsen, ty);
               run_sigma_3pt(T, wall_prop[tm], corr_sigma_3pt, 
-                            nt, nx, sep, tm, t,
+                            nt, nx, sep, tm, t, num_currents,
                             xc * block_size, yc * block_size, zc * block_size);
               run_nnpp_3pt(T, wall_prop[tm], corr_nnpp_3pt, 
                            nt, nx, sep, tm, t, num_currents,

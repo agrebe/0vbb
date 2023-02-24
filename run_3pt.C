@@ -1,7 +1,40 @@
 #include "run_3pt.h"
 
+// helper method to compute tensor given two seqprops
+void combine_seqprops(Vcomplex * T, int T_shift,
+                      WeylMat * seqprop,
+                      int gamma_1, int gamma_2) {
+  int tensor_size = 6 * 6 * 6 * 6; // 4 spin-color indices
+  int seqprop_size = 3 * 3; // 2 color indices
+  Vcomplex * T_shifted = T + T_shift * tensor_size;
+  WeylMat * seqprop_shifted_1 = seqprop + gamma_1 * seqprop_size;
+  WeylMat * seqprop_shifted_2 = seqprop + gamma_2 * seqprop_size;
+  // loop over all the colors
+  for (int c1 = 0; c1 < 3; c1 ++) {
+    for (int c2 = 0; c2 < 3; c2 ++) {
+      for (int c3 = 0; c3 < 3; c3 ++) {
+        for (int c4 = 0; c4 < 3; c4 ++) {
+          // loop over spins
+          for (int s1 = 0; s1 < 2; s1 ++) {
+            for (int s2 = 0; s2 < 2; s2 ++) {
+              for (int s3 = 0; s3 < 2; s3 ++) {
+                for (int s4 = 0; s4 < 2; s4 ++) {
+                  *(T_shifted++)
+                    += ((Vcomplex*) (seqprop_shifted_1 + c1 * 3 + c2))[s1*2+s2]
+                     * ((Vcomplex*) (seqprop_shifted_2 + c3 * 3 + c4))[s3*2+s4];
+                }
+              }
+            }
+          }
+
+        }
+      }
+    }
+  }
+}
+
 // compute rank-4 tensor T
-// Here T will have an extra index of {SS, PP, VV, AA, TT}
+// Here T will have an extra index of {SS, PP, VV, AA, TT, VS, AP, VT, AT}
 // This index will run slower than anything else
 // so T will be of size (2*3)^4 * 4
 void compute_tensor_3(Vcomplex * T,
@@ -10,10 +43,11 @@ void compute_tensor_3(Vcomplex * T,
                       int nx,               // spatial extent of lattice
                       int block_size,       // sparsening factor at operator
                       int ty) {             // operator time
-  int num_currents = 5; // {SS, PP, VV, AA, TT}
+  int num_currents = 9; // {SS, PP, VV, AA, TT, VS, AP, VT, AT}
+  int tensor_size = 6 * 6 * 6 * 6; // 4 spin-color indices
 
   // zero out T
-  for (int i = 0; i < 1296 * num_currents; i ++)
+  for (int i = 0; i < tensor_size * num_currents; i ++)
     T[i] = Vcomplex();
 
   int nx_blocked = nx / block_size;
@@ -81,32 +115,38 @@ void compute_tensor_3(Vcomplex * T,
           else if (gamma_index >= 2) shift = 2;
           else if (gamma_index >= 1) shift = 1;
           else shift = 0;
-          shift *= 1296;
-          T_shifted = T + shift;
-          // loop over all the colors
-          for (int c1 = 0; c1 < 3; c1 ++) {
-            for (int c2 = 0; c2 < 3; c2 ++) {
-              for (int c3 = 0; c3 < 3; c3 ++) {
-                for (int c4 = 0; c4 < 3; c4 ++) {
-                  // loop over spins
-                  for (int s1 = 0; s1 < 2; s1 ++) {
-                    for (int s2 = 0; s2 < 2; s2 ++) {
-                      for (int s3 = 0; s3 < 2; s3 ++) {
-                        for (int s4 = 0; s4 < 2; s4 ++) {
-                          *(T_shifted++)
-                            += ((Vcomplex*) (seqprop_shifted + c1 * 3 + c2))[s1*2+s2]
-                             * ((Vcomplex*) (seqprop_shifted + c3 * 3 + c4))[s3*2+s4];
-                        }
-                      }
-                    }
-                  }
-
-                }
-              }
-            }
-          }
+          combine_seqprops(T, shift, seqprop, gamma_index, gamma_index);
         }
 
+        // VS and AP contractions
+        // these will multiply the temporal index (5 and 9) of V and A
+        // with S and P (indices 0 and 1), respectively
+
+        combine_seqprops(T, 5, seqprop, 0, 5);
+        combine_seqprops(T, 6, seqprop, 1, 9);
+
+        // VT and AT contractions
+        // These have the form epsilon^{mu nu rho sigma} V^{nu} T^{rho sigma}
+        // We are interested in the mu = 0 component, so this is
+        // V^1 T^{23} - V^2 T^{13} + V^3 T^{12}
+        // indices of components:
+        // V^{1,2,3}: 2, 3, 4
+        // A^{1,2,3}: 6, 7, 8
+        // T^{23, 13, 12}: 13, 11, 10
+
+        combine_seqprops(T, 7, seqprop, 3, 11);
+        // IMPORTANT: This one gets a minus sign
+        for (int i = 0; i < tensor_size; i ++)
+          T[7 * tensor_size + i] *= -1;
+        combine_seqprops(T, 7, seqprop, 2, 13);
+        combine_seqprops(T, 7, seqprop, 4, 10);
+
+        combine_seqprops(T, 8, seqprop, 7, 11);
+        // IMPORTANT: This one gets a minus sign
+        for (int i = 0; i < tensor_size; i ++)
+          T[8 * tensor_size + i] *= -1;
+        combine_seqprops(T, 8, seqprop, 6, 13);
+        combine_seqprops(T, 8, seqprop, 8, 10);
       }
     }
   }

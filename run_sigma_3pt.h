@@ -10,4 +10,5 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
                    int sep,                  // sink - source time
                    int tm,                   // source time
                    int t,                    // operator - source time
+                   int num_currents,         // {SS, PP, VV, AA, TT}
                    int xc, int yc, int zc);  // sink coordinates
