@@ -20,10 +20,16 @@
 #include "run_sigma_4pt.h"
 #include "run_nnpp_4pt.h"
 
-int main() {
+// QPhiX linkages
+#include "setup.h"
+#include "sources.h"
+#include "invert.h"
+
+int main(int argc, char ** argv) {
+  omp_set_nested(1);
   // lattice size variables
   int nt = 48;
-  int nx = 16;
+  int nx = 32;
   int vol = nt * nx * nx * nx;
   
   // electron mass
@@ -32,18 +38,18 @@ int main() {
   // sparsening factors
   int block_size = 8;         // sparsening at sink
   int block_size_sparsen = 1; // sparsening at operator
-  int global_sparsening = 2;  // ratio between nx and actual size of lattice
+  int global_sparsening = 1;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
   // source and sink time ranges
   int min_sep = 6;
-  int max_sep = 16;
+  int max_sep = 24;
   int sink_offset = 0; // minimum sink time
   int sink_sep = 8;    // separation between sinks
   
   // compute propagator sizes and quantities
   int num_sources = nt;
-  int prop_size = vol * 9;
+  size_t prop_size = vol * 9;
   int wall_sink_prop_size = nt * 9;
   int num_pt_props = nx / block_size; // number of point props in each direction
 
@@ -54,22 +60,57 @@ int main() {
   color_tensor_2bodies(color_idx_2);
 
   double dtime1 = omp_get_wtime();
-
+  
   // read in propagators
   SpinMat * wall_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * num_sources);
   SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(wall_sink_prop_size * sizeof(SpinMat) * num_sources);
   SpinMat * wall_prop [nt];
   SpinMat * wall_sink_prop [nt];
+  
   for (int tm = 0; tm < nt; tm ++) {
     wall_prop[tm] = wall_prop_storage + prop_size * tm;
     wall_sink_prop[tm] = wall_sink_prop_storage + wall_sink_prop_size * tm;
-    
-    char wall_sink_filename [100], wall_filename [100];
-    sprintf(wall_filename, "../props/wall-source-%d.lime.contents/msg02.rec03.scidac-binary-data", tm);
-    sprintf(wall_sink_filename, "../props/wall-source-%d-wall-sink.lime.contents/msg02.rec03.scidac-binary-data", tm);
-    read_prop(wall_filename, wall_prop[tm], nt, nx);
+  }
+
+  // initialization of QPhiX solver
+  char filename [] = "../lattices/cl3_32_48_b6p1_m0p2450-sgf.lime";
+  double mass=-0.245;
+  //double mass=1.0;
+  double clov_coeff=1.24930970916466;
+  int soalen = 8; // QPhiX parameter
+  int num_vecs = vol / (2 * soalen);
+  double ** source = (double **) malloc(sizeof(double*) * 2);
+  double ** ferm = (double **) malloc(sizeof(double*) * 2);
+  for (int j = 0; j < 2; j ++) {
+    source[j] = (double*) malloc(sizeof(double) * 12 * 2 * vol);
+    ferm[j] = (double*) malloc(sizeof(double) * 12 * 2 * vol);
+  }
+  // initialize QDP before using up all our memory
+  setup_QDP(&argc, &argv);
+  void * params = create_solver(mass, clov_coeff, (char*) filename);
+
+  for (int tm = 0; tm < nt; tm ++) {
+    for (int c = 0; c < 3; c ++) {
+      for (int s = 0; s < 2; s ++) {
+        // create wall source
+        wall_source((double (**)[3][4][2][soalen]) source, tm, s, c, nx, nt);
+        // project to positive parity
+        project_positive((double (**)[3][4][2][soalen]) source, nx, nt);
+        // invert off wall source
+        invert((double (**)[3][4][2][soalen]) ferm,
+               (double (**)[3][4][2][soalen]) source,
+               params);
+        to_spin_mat((double*) wall_prop[tm], 
+                    (double (**)[3][4][2][soalen]) ferm, 
+                    s, c, nx, nt);
+      }
+    }
+    // positive parity project the wall prop
     project_prop(wall_prop[tm], nt, nx, 1);
-    read_prop(wall_sink_filename, wall_sink_prop[tm], nt, 1);
+    // rescale prop by 2 (since half the spins were zeroed out)
+    rescale_prop(wall_prop[tm], nt, nx, 2);
+    printf("Finished wall source at time %d\n", tm);
+    fflush(stdout);
   }
 
   double dtime2 = omp_get_wtime();
@@ -82,10 +123,6 @@ int main() {
   Vcomplex corr [nt];
   // loop over source times
   for (int tm = 0; tm < nt; tm ++) {
-    run_pion_correlator_wsink(wall_sink_prop[tm], corr, nt, 1);
-    for (int t = 0; t < nt; t ++) 
-      fprintf(pion_2pt, "%d %d %.10e\n", tm, t, corr[(t+tm)%nt].real());
-
     // compute neutron correlator
     run_neutron_correlator_PP(wall_prop[tm], corr, nt, nx, block_size);
     // flip sign (due to AP boundary conditions) if tp = t + tm > nt
@@ -107,7 +144,7 @@ int main() {
   fclose(dineutron_2pt);
 
   double dtime3 = omp_get_wtime();
-  double time_reading_points, time_3_point, time_4_point;
+  double time_reading_points = 0, time_3_point = 0, time_4_point = 0;
   
   // plan all the FFTs and compute the neutrino propagator FFT
   // precompute all neutrino propagators and their Fourier transforms
@@ -185,12 +222,43 @@ int main() {
       for (int yc = 0; yc < num_pt_props; yc ++) {
         for (int zc = 0; zc < num_pt_props; zc ++) {
           time_reading_points -= omp_get_wtime();
+          /*
           char point_filename [100];
           sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
           read_prop(point_filename, point_prop, nt, nx);
-          rescale_prop(point_prop, nt, nx, 0.5);
+          */
+          for (int c = 0; c < 3; c ++) {
+            for (int s = 0; s < 2; s ++) {
+              // create point source
+              point_source((double (**)[3][4][2][soalen]) source, 
+                  xc * block_size, yc * block_size, zc * block_size, tp,
+                  s, c, nx, nt);
+              // project to negative parity
+              project_negative((double (**)[3][4][2][soalen]) source, nx, nt);
+              // invert off point source
+              double start = omp_get_wtime();
+              invert((double (**)[3][4][2][soalen]) ferm,
+                     (double (**)[3][4][2][soalen]) source,
+                     params);
+              double end = omp_get_wtime();
+              printf("Total solve time: %f sec\n", end - start);
+              to_spin_mat((double*) point_prop,
+                          (double (**)[3][4][2][soalen]) ferm, 
+                          s, c, nx, nt);
+              double end2 = omp_get_wtime();
+              printf("Conversion to spin matrix: %f sec\n", end2 - end);
+            }
+          }
+
+          double start = omp_get_wtime();
           project_prop(point_prop, nt, nx, 0);
           reverse_prop(point_prop, nt, nx);
+          // rescale prop by 2 (since half the spins were zeroed out)
+          rescale_prop(point_prop, nt, nx, 2);
+          double end = omp_get_wtime();
+          printf("Total projection time: %f sec\n", end - start);
+          fflush(stdout);
+
           time_reading_points += omp_get_wtime();
 
 
@@ -219,6 +287,8 @@ int main() {
             }
           }
           time_3_point += omp_get_wtime();
+          printf("Cumulative 3-point time: %f sec\n", time_3_point);
+          fflush(stdout);
           
 
           // compute sigma and nn->pp 4-point functions
@@ -227,11 +297,11 @@ int main() {
           for (int sep = min_sep; sep <= max_sep; sep ++) {
             int tm = (nt + tp - sep) % nt;
             // precompute all Hvec
-            int offset = sparse_vol * 4 * 9;
-            WeylMat * Hvec = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
-            WeylMat * Hvec_F_forward = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
-            WeylMat * Hvec_F_backward = (WeylMat*) malloc(offset * sizeof(WeylMat) * nt);
-            #pragma omp parallel for num_threads(12)
+            size_t offset = sparse_vol * 4 * 9;
+            WeylMat * Hvec = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
+            WeylMat * Hvec_F_forward = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
+            WeylMat * Hvec_F_backward = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
+            #pragma omp parallel for num_threads(8)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               assemble_Hvec(Hvec + ty * offset,
                             wall_prop[tm], point_prop, nx, 
@@ -255,7 +325,7 @@ int main() {
                 }
               }
             }
-            #pragma omp parallel for collapse(2) num_threads(12)
+            #pragma omp parallel for collapse(2) num_threads(8)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               // compute sequential propagator through one operator
               for (int tx = 3; tx <= sep - 3; tx ++) {
@@ -288,6 +358,8 @@ int main() {
             free(Hvec_F_backward);
           }
           time_4_point += omp_get_wtime();
+          printf("Cumulative 4-point time: %f sec\n", time_4_point);
+          fflush(stdout);
         }
       }
     }
