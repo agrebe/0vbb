@@ -90,6 +90,9 @@ int main(int argc, char ** argv) {
   void * params = create_solver(mass, clov_coeff, (char*) filename);
 
   for (int tm = 0; tm < nt; tm ++) {
+    // zero out wall prop
+    for (int i = 0; i < prop_size; i ++)
+      wall_prop[tm][i] = SpinMat();
     for (int c = 0; c < 3; c ++) {
       for (int s = 0; s < 2; s ++) {
         // create wall source
@@ -227,6 +230,11 @@ int main(int argc, char ** argv) {
           sprintf(point_filename, "../props/point-prop-%d-%d%d%d.lime.contents/msg02.rec03.scidac-binary-data", tp, xc, yc, zc);
           read_prop(point_filename, point_prop, nt, nx);
           */
+
+          // zero out point prop
+          for (int i = 0; i < prop_size; i ++)
+            point_prop[i] = SpinMat();
+
           for (int c = 0; c < 3; c ++) {
             for (int s = 0; s < 2; s ++) {
               // create point source
