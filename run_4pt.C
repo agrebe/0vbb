@@ -62,29 +62,37 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
     }
   }
 }
+#define MIN(a, b) ( (a<b) ? a : b )
 
-static int dist_sq(int y, int z, int nx) {
-  int d1 = abs(y - z); 
-  d1 = (d1 < nx - d1) ? d1 : nx - d1; 
-  return d1 * d1; 
+double periodic_norm(int x, int y, int z, int L) {
+  x = MIN(x, L-x);
+  y = MIN(y, L-y);
+  z = MIN(z, L-z);
+  return sqrt(x * x + y * y + z * z);
 }
 
 // neutrino propagator
-double nu_prop(int y1, int y2, int y3, int y4, // first point
-                      int z1, int z2, int z3, int z4, // second point
-                      int nx, int nt,                 // spatial and temporal extent
-                      int global_sparsening) {        // global sparsening factor
-  int distance_sq;
-  distance_sq = dist_sq(y1, z1, nx);
-  distance_sq += dist_sq(y2, z2, nx);
-  distance_sq += dist_sq(y3, z3, nx);
-  // inflate spatial coordinates by global sparsening factor
-  distance_sq *= (global_sparsening * global_sparsening);
-
-  distance_sq += dist_sq(y4, z4, nt);
-
-  double prop = (distance_sq == 0) ? 1.0/16 : (1 - exp(-distance_sq * M_PI * M_PI / 4)) / (4 * M_PI * M_PI * distance_sq);
-  return prop;
+double nu_prop(int x, int y, int z, int tau,   // separation between current insertions
+                      int nx,                  // spatial extent
+                      int global_sparsening) { // global sparsening factor
+  int nx_full = nx * global_sparsening;
+  double denom = 4 * M_PI * nx_full * nx_full;
+  double sum = 0;
+  // loop over momentum
+  for (int qz = 0; qz < nx_full; qz ++) {
+    for (int qy = 0; qy < nx_full; qy ++) {
+      for (int qx = 0; qx < nx_full; qx ++) {
+        // compute norm of momentum
+        double normq = periodic_norm(qx, qy, qz, nx_full);
+        if (normq == 0) continue;
+        double phase = z * qz + y * qy + x * qx;
+        phase *= 2 * M_PI / nx;
+        sum += exp(-normq * tau * 2 * M_PI / (nx_full))
+               * cos(phase) / (denom * normq);
+      }
+    }
+  }
+  return sum;
 }
 
 // return tensor index from colors and spins

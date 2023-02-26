@@ -7,14 +7,14 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
                    int sep,                  // sink - source time
                    int tm,                   // source time
                    int t,                    // operator - source time
-                  int num_currents,         // {SS, PP, VV, AA, TT}
+                   int num_currents,         // {SS, PP, VV, AA, TT}
                    int xc, int yc, int zc) { // sink coordinates
   WeylMat idW = ExtractWeyl(id) * 0.5;
   // extract propagator from source to sink
   int tp = (tm + sep) % nt;
   int loc = ((tp * nx + zc) * nx + yc) * nx + xc;
   SpinMat * S_tm_to_tp = wall_prop + 9 * loc;
-  Vcomplex tmp[num_currents * 2];
+  Vcomplex tmp[num_currents * 4];
   // compute operator time
   int tx = (t + tm) % nt;
   WeylMat CG5SsCG5 [9];
@@ -35,14 +35,18 @@ void run_sigma_3pt(Vcomplex * T,             // precomputed tensor
 
     // loop over index of {SS, PP, VV, AA, TT}
     for (int index = 0; index < num_currents; index ++) {
-      tmp[0 + index * 2] += sign 
+      tmp[0 + index * 4] += sign 
         * two_traces(T + index * 1296, j, ip, i, kp, CG5SsCG5[3*k+jp], idW);
-      tmp[1 + index * 2] += sign 
+      tmp[1 + index * 4] += sign 
         * one_trace (T + index * 1296, i, ip, j, kp, CG5SsCG5[3*k+jp], idW);
+      tmp[2 + index * 4] += sign 
+        * two_traces(T + index * 1296, j, ip, i, kp, idW, CG5SsCG5[3*k+jp]);
+      tmp[3 + index * 4] += sign 
+        * one_trace (T + index * 1296, i, ip, j, kp, idW, CG5SsCG5[3*k+jp]);
     }
 
   } // colors
   #pragma omp critical
-  for (int i = 0; i < 2 * num_currents; i ++)
-    corr[(sep * nt + t) * 2 * num_currents + i] += tmp[i];
+  for (int i = 0; i < 4 * num_currents; i ++)
+    corr[(sep * nt + t) * 4 * num_currents + i] += tmp[i];
 }

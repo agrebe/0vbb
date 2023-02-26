@@ -37,7 +37,8 @@ int main(int argc, char ** argv) {
 
   // sparsening factors
   int block_size = 8;         // sparsening at sink
-  int block_size_sparsen = 1; // sparsening at operator
+  // TODO: Revert this to 1
+  int block_size_sparsen = 4; // sparsening at operator
   int global_sparsening = 1;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
@@ -165,8 +166,7 @@ int main(int argc, char ** argv) {
               + (y2 / block_size_sparsen)) * nx_blocked
               + (y1 / block_size_sparsen);
           double nu_value = nu_prop(y1, y2, y3, dt,
-                                    0, 0, 0, 0,
-                                    nx, nt, global_sparsening);
+                                    nx, global_sparsening);
           nu[idy * 2] = nu_value;
           nu[idy * 2 + 1] = 0;
         }
@@ -213,7 +213,7 @@ int main(int argc, char ** argv) {
     // 3-point correlator should store source-sink sep and source-op sep
     // access with corr_sigma_3pt[((sep * nt + t) * 16 + i]
     int num_currents = 9;
-    Vcomplex corr_sigma_3pt[nt * nt * num_currents * 2];
+    Vcomplex corr_sigma_3pt[nt * nt * num_currents * 4];
     Vcomplex corr_nnpp_3pt[nt * nt * num_currents];
 
     // 4-point correlator should store source-sink sep and both source-op seps
@@ -380,8 +380,8 @@ int main(int argc, char ** argv) {
         int tm = (nt + tp - sep) % nt;
         fprintf(sigma_3pt, "%d %d %d ", sep, tm, t);
         // loop for sigma
-        for (int i = 0; i < num_currents * 2; i ++) {
-          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * num_currents * 2 + i];
+        for (int i = 0; i < num_currents * 4; i ++) {
+          Vcomplex element = corr_sigma_3pt[(sep * nt + t) * num_currents * 4 + i];
           // flip sign if needed for AP boundary conditions
           if (tm + sep >= nt) element *= -1;
           fprintf(sigma_3pt, "%.10e %.10e ", element.real(), element.imag());
