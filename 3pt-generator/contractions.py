@@ -8,22 +8,6 @@ import numpy as np
 # The u/d correlators will be stored as the numerical index (1, 2, 3, 4) that pairs with each of A, B, C, and D
 # The first element in the correlator array will be the sign (+/-) associated with it
 
-u_correlators = np.array([[ 1, 1, 2, 3, 4],  # overall sign is +1, u1 pairs with uA, ..., u4 pairs with uD
-                          [-1, 1, 3, 2, 4],  # overall sign is -1, u1 pairs with uA, u3 pairs with uB, ...
-                          [ 1, 1, 4, 2, 3],  
-                          [ 1, 3, 4, 1, 2],
-                          [-1, 2, 4, 1, 3],
-                          [ 1, 2, 3, 1, 4]], dtype='int')
-
-# For this case, we also need to add the case where the final two elements are swapped (and the sign is flipped)
-for i in range(6):
-  row = np.copy(u_correlators[i,:])
-  temp = row[3]
-  row[3] = row[4]
-  row[4] = temp
-  row[0] *= -1
-  u_correlators = np.vstack((u_correlators, row))
-
 # For the d correlators, typing this out by hand is error prone, so we automate this
 # This is literally just the 4-index epsilon tensor
 # This is probably inefficient but gets the right answer
@@ -40,6 +24,9 @@ for a in range(4):
         if (det > 0): d_correlators[d_counter] = [1, a+1, b+1, c+1, d+1]
         if (det == 0): d_counter -= 1
         d_counter += 1
+
+# u correlators are the same as the d ones here (no special symmetries to apply)
+u_correlators = np.copy(d_correlators)
 
 # quarks whose spin indices pair
 # This comes out of the algebra
@@ -152,6 +139,6 @@ def corr_to_contraction(i, j):
     if (total_sign == -1): string = string.replace("+=", "-=")
   return string + ";"
 
-for i in range(12):
+for i in range(24):
   for j in range(24):
     print(corr_to_contraction(i, j))
