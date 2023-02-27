@@ -37,8 +37,7 @@ int main(int argc, char ** argv) {
 
   // sparsening factors
   int block_size = 8;         // sparsening at sink
-  // TODO: Revert this to 1
-  int block_size_sparsen = 4; // sparsening at operator
+  int block_size_sparsen = 1; // sparsening at operator
   int global_sparsening = 1;  // ratio between nx and actual size of lattice
                               // this is the amount by which props have already been sparsened
   
@@ -73,7 +72,6 @@ int main(int argc, char ** argv) {
   // initialization of QPhiX solver
   char filename [] = "../lattices/cl3_32_48_b6p1_m0p2450-sgf.lime";
   double mass=-0.245;
-  //double mass=1.0;
   double clov_coeff=1.24930970916466;
   int soalen = 8; // QPhiX parameter
   int num_vecs = vol / (2 * soalen);

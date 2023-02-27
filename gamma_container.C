@@ -35,8 +35,10 @@ void initialize_gammas() {
   cg5.data[11] = Vcomplex(0, -1);
   cg5.data[14] = Vcomplex(0, 1);
 
-  pl.data[10] = Vcomplex(1, 0);
-  pl.data[15] = Vcomplex(1, 0);
+  // renormalized version fo left-handed projector
+  // for comparison, ZV is held fixed and ZA is taken to be ZA/ZV = 1.096 +/- 0.022 (https://arxiv.org/pdf/1611.07452.pdf)
+  // this still requires an overall normalization of (ZV = 0.802 +/- 0.022)^2 applied post hoc
+  pl = (id - g5 * 1.096) * 0.5;
 
   for (int i = 0; i < 4; i ++)
     for (int j = 0; j < 4; j ++) 
