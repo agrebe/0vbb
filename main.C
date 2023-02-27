@@ -8,7 +8,6 @@
 #include "spin_mat.h"
 #include "color_tensor.h"
 #include "gamma_container.h"
-#include "run_meson_2pt.h"
 
 // 2-point, 3-point, and 4-point contractions
 #include "run_baryon_2pt.h"
@@ -31,6 +30,7 @@ int main(int argc, char ** argv) {
   int nt = 48;
   int nx = 32;
   int vol = nt * nx * nx * nx;
+  int spatial_vol = nx * nx * nx;
   
   // electron mass
   double me = 3.761159784263958e-04;
@@ -44,14 +44,13 @@ int main(int argc, char ** argv) {
   
   // source and sink time ranges
   int min_sep = 6;
-  int max_sep = 24;
+  int max_sep = 23;
   int sink_offset = 0; // minimum sink time
   int sink_sep = 8;    // separation between sinks
   
   // compute propagator sizes and quantities
   int num_sources = nt;
   size_t prop_size = vol * 9;
-  int wall_sink_prop_size = nt * 9;
   int num_pt_props = nx / block_size; // number of point props in each direction
 
   double dtime0 = omp_get_wtime();
@@ -63,14 +62,12 @@ int main(int argc, char ** argv) {
   double dtime1 = omp_get_wtime();
   
   // read in propagators
-  SpinMat * wall_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * num_sources);
-  SpinMat * wall_sink_prop_storage = (SpinMat*) malloc(wall_sink_prop_size * sizeof(SpinMat) * num_sources);
+  SpinMat * wall_prop_storage = (SpinMat*) malloc(prop_size * sizeof(SpinMat) * nt / 2);
   SpinMat * wall_prop [nt];
-  SpinMat * wall_sink_prop [nt];
   
-  for (int tm = 0; tm < nt; tm ++) {
+  for (int tm = 0; tm < nt / 2; tm ++) {
     wall_prop[tm] = wall_prop_storage + prop_size * tm;
-    wall_sink_prop[tm] = wall_sink_prop_storage + wall_sink_prop_size * tm;
+    wall_prop[tm + nt / 2] = wall_prop_storage + prop_size * tm;
   }
 
   // initialization of QPhiX solver
@@ -90,10 +87,11 @@ int main(int argc, char ** argv) {
   setup_QDP(&argc, &argv);
   void * params = create_solver(mass, clov_coeff, (char*) filename);
 
+  SpinMat * wall_prop_buffer = (SpinMat *) malloc(prop_size * sizeof(SpinMat));
   for (int tm = 0; tm < nt; tm ++) {
-    // zero out wall prop
+    // zero out wall prop buffer
     for (int i = 0; i < prop_size; i ++)
-      wall_prop[tm][i] = SpinMat();
+      wall_prop_buffer[i] = SpinMat();
     for (int c = 0; c < 3; c ++) {
       for (int s = 0; s < 2; s ++) {
         // create wall source
@@ -104,17 +102,26 @@ int main(int argc, char ** argv) {
         invert((double (**)[3][4][2][soalen]) ferm,
                (double (**)[3][4][2][soalen]) source,
                params);
-        to_spin_mat((double*) wall_prop[tm], 
+        to_spin_mat((double*) wall_prop_buffer, 
                     (double (**)[3][4][2][soalen]) ferm, 
                     s, c, nx, nt);
       }
     }
+    // copy buffer into wall_prop between tm and tm + nt / 2
+    for (int t = 0; t < nt; t ++)
+      if (((t - tm + nt) % nt) < nt / 2)
+        memcpy(wall_prop[tm] + spatial_vol * 9 * t,
+               wall_prop_buffer + spatial_vol * 9 * t,
+               spatial_vol * 9 * sizeof(SpinMat));
+    printf("Finished wall source at time %d\n", tm);
+    fflush(stdout);
+  }
+  free(wall_prop_buffer);
+  for (int tm = 0; tm < nt / 2; tm ++) {
     // positive parity project the wall prop
     project_prop(wall_prop[tm], nt, nx, 1);
     // rescale prop by 2 (since half the spins were zeroed out)
     rescale_prop(wall_prop[tm], nt, nx, 2);
-    printf("Finished wall source at time %d\n", tm);
-    fflush(stdout);
   }
 
   double dtime2 = omp_get_wtime();
@@ -424,7 +431,6 @@ int main(int argc, char ** argv) {
   fclose(nnpp_3pt);
   fclose(nnpp_4pt);
   free(wall_prop_storage);
-  free(wall_sink_prop_storage);
   free(point_prop);
 
   printf("----------------------------------------------------------------------\n");
