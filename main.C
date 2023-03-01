@@ -71,6 +71,7 @@ int main(int argc, char ** argv) {
 
   // initialization of QPhiX solver
   char filename [] = "../lattices/cl3_32_48_b6p1_m0p2450-sgf.lime";
+  //double mass=1.0;
   double mass=-0.245;
   double clov_coeff=1.24930970916466;
   int soalen = 8; // QPhiX parameter
@@ -154,6 +155,7 @@ int main(int argc, char ** argv) {
 
   double dtime3 = omp_get_wtime();
   double time_reading_points = 0, time_3_point = 0, time_4_point = 0;
+  double time_4_point_A = 0, time_4_point_B = 0;
   
   // plan all the FFTs and compute the neutrino propagator FFT
   // precompute all neutrino propagators and their Fourier transforms
@@ -164,6 +166,7 @@ int main(int argc, char ** argv) {
   double * nu = (double *) malloc(2 * sparse_vol * sizeof(double));
   fftw_complex * nu_F = (fftw_complex *) malloc(sparse_vol * sizeof(fftw_complex) * nt);
   for (int dt = 0; dt <= max_sep; dt ++) {
+    #pragma omp parallel for collapse(3)
     for (int y3 = 0; y3 < nx; y3 += block_size_sparsen) {
       for (int y2 = 0; y2 < nx; y2 += block_size_sparsen) {
         for (int y1 = 0; y1 < nx; y1 += block_size_sparsen) {
@@ -306,7 +309,6 @@ int main(int argc, char ** argv) {
 
           // compute sigma and nn->pp 4-point functions
           time_4_point -= omp_get_wtime();
-          #pragma omp parallel for num_threads(8)
           for (int sep = min_sep; sep <= max_sep; sep ++) {
             int tm = (nt + tp - sep) % nt;
             // precompute all Hvec
@@ -314,7 +316,8 @@ int main(int argc, char ** argv) {
             WeylMat * Hvec = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
             WeylMat * Hvec_F_forward = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
             WeylMat * Hvec_F_backward = (WeylMat*) malloc(offset * sizeof(WeylMat) * max_sep);
-            #pragma omp parallel for num_threads(8)
+            time_4_point_A -= omp_get_wtime();
+            #pragma omp parallel for
             for (int ty = 3; ty <= sep - 3; ty ++) {
               assemble_Hvec(Hvec + ty * offset,
                             wall_prop[tm], point_prop, nx, 
@@ -338,7 +341,9 @@ int main(int argc, char ** argv) {
                 }
               }
             }
-            #pragma omp parallel for collapse(2) num_threads(8)
+            time_4_point_A += omp_get_wtime();
+            time_4_point_B -= omp_get_wtime();
+            #pragma omp parallel for collapse(2)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               // compute sequential propagator through one operator
               for (int tx = 3; tx <= sep - 3; tx ++) {
@@ -366,12 +371,15 @@ int main(int argc, char ** argv) {
                 free(T);
               }
             }
+            time_4_point_B += omp_get_wtime();
             free(Hvec);
             free(Hvec_F_forward);
             free(Hvec_F_backward);
           }
           time_4_point += omp_get_wtime();
           printf("Cumulative 4-point time: %f sec\n", time_4_point);
+          printf("Cumulative 4-point seqprop construction time: %f sec\n", time_4_point_A);
+          printf("Cumulative 4-point contractions time: %f sec\n", time_4_point_B);
           fflush(stdout);
         }
       }
