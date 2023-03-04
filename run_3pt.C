@@ -1,6 +1,16 @@
 #include "run_3pt.h"
 
-// helper method to compute tensor given two seqprops
+/*
+ * The 3-point functions are computed by first assembling a tensor T
+ * with 4 spin-color indices and then contracting this tensor with
+ * source/sink interpolators.
+ * This file contains the routines needed to build this tensor.
+ */
+
+// Given two sequential propagators, compute the contribution to the tensor T.
+// T_shift gives the index into the tensor.
+// gamma_1 and gamma_2 give the indices of the two gamma matrices
+// used in constructing the two sequential propagators.
 void combine_seqprops(Vcomplex * T, int T_shift,
                       WeylMat * seqprop,
                       int gamma_1, int gamma_2) {
@@ -33,10 +43,17 @@ void combine_seqprops(Vcomplex * T, int T_shift,
   }
 }
 
-// compute rank-4 tensor T
-// Here T will have an extra index of {SS, PP, VV, AA, TT, VS, AP, VT, AT}
-// This index will run slower than anything else
-// so T will be of size (2*3)^4 * 4
+// This is the main method to construct the 4-index tensor.
+// It begins by computing the 16 seqprops with different gamma matrices
+// and then it assembles the necessary pairs into the tensor.
+// The pairs of seqprops used are those needed to form the various
+// operators mentioned in Eq. (7) of https://arxiv.org/pdf/1806.02780.pdf.
+// After applying spin and color Fiertz identities, the necessary combinations
+// of gamma matrices in seqprop pairs are {SS, PP, VV, AA, TT, VS, AP, VT, AT}.
+// The tensor will have an outer index to specify which of these pairs
+// was used in its construction and four spin-color indices, with all spin
+// indices running faster than all color indices.
+// Thus, the total size of T will be 9 * (2*3)^4 complex numbers.
 void compute_tensor_3(Vcomplex * T,
                       SpinMat * wall_prop,  // source to operator
                       SpinMat * point_prop, // sink to operator
@@ -58,10 +75,10 @@ void compute_tensor_3(Vcomplex * T,
   // split each SpinMat into four WeylMats
   WeylMat gs_W [64];
   for (int i = 0; i < 16; i ++) {
-    gs_W[4*i] = ExtractWeyl(gs[i], 0, 0);
-    gs_W[4*i+1] = ExtractWeyl(gs[i], 0, 1);
-    gs_W[4*i+2] = ExtractWeyl(gs[i], 1, 0);
-    gs_W[4*i+3] = ExtractWeyl(gs[i], 1, 1);
+    gs_W[4*i] = ExtractSpecificWeyl(gs[i], 0, 0);
+    gs_W[4*i+1] = ExtractSpecificWeyl(gs[i], 0, 1);
+    gs_W[4*i+2] = ExtractSpecificWeyl(gs[i], 1, 0);
+    gs_W[4*i+3] = ExtractSpecificWeyl(gs[i], 1, 1);
   }
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
@@ -72,17 +89,23 @@ void compute_tensor_3(Vcomplex * T,
         // compute the sequential propagator through idx
         // compute this for all 16 Gamma matrices at idx
         WeylMat seqprop [9 * 16];
+        /*
+         * We want to compute the upper left component of Sl_wz * gs * Sl_xz
+         * In terms of 2x2 block Weyl matrices, we need the first row of Sl_wz,
+         * all four blocks of gs, and the first column of Sl_xz.
+         * We will extract the necessary blocks.
+         */
         WeylMat Sl_wz_W[9*2], Sl_xz_W[9*2];
         for (int c = 0; c < 9; c ++) {
-          Sl_wz_W[c*2]   = ExtractWeyl(Sl_wz[c], 0, 0);
-          Sl_wz_W[c*2+1] = ExtractWeyl(Sl_wz[c], 0, 1);
-          Sl_xz_W[c*2]   = ExtractWeyl(Sl_xz[c], 0, 0);
-          Sl_xz_W[c*2+1] = ExtractWeyl(Sl_xz[c], 1, 0);
+          Sl_wz_W[c*2]   = ExtractSpecificWeyl(Sl_wz[c], 0, 0);
+          Sl_wz_W[c*2+1] = ExtractSpecificWeyl(Sl_wz[c], 0, 1);
+          Sl_xz_W[c*2]   = ExtractSpecificWeyl(Sl_xz[c], 0, 0);
+          Sl_xz_W[c*2+1] = ExtractSpecificWeyl(Sl_xz[c], 1, 0);
         }
         for (int c1 = 0; c1 < 3; c1 ++) {
           for (int cA = 0; cA < 3; cA ++) {
             for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
-              // compute the block WeylMats in the upper row of Sl_wz * gs
+              // Compute the block WeylMats in the upper row of Sl_wz * gs
               // This is all we need to extract the upper left corner
               WeylMat temp0 = Sl_wz_W[2*(3*c1+cA)] 
                               * gs_W[4*gamma_index]
@@ -93,7 +116,7 @@ void compute_tensor_3(Vcomplex * T,
                             + Sl_wz_W[2*(3*c1+cA)+1]
                               * gs_W[4*gamma_index+3];
               for (int c2 = 0; c2 < 3; c2 ++) {
-                // multiply upper row of temp = Sl_wz * gs
+                // Multiply upper row of temp = Sl_wz * gs
                 // by left column of Sl_xz
                 WeylMat temp2 = Sl_xz_W[2*(3*cA+c2)];
                 WeylMat temp3 = Sl_xz_W[2*(3*cA+c2)+1];
@@ -104,9 +127,10 @@ void compute_tensor_3(Vcomplex * T,
             }
           }
         }
-        WeylMat * seqprop_shifted;
+        // Compute the diagonal components of T,
+        // corresponding to a pair of identical seqprops
+        // These give the terms SS, PP, VV, AA, and TT
         for (int gamma_index = 0; gamma_index < 16; gamma_index ++) {
-          seqprop_shifted = seqprop + gamma_index * 9;
           Vcomplex * T_shifted;
           int shift;
           // increment T at start of PP, VV, AA, and TT

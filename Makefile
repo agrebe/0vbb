@@ -4,8 +4,7 @@ QDPCONFIG = $(QDP)/bin/qdp++-config
 
 CC = icpc
 CFLAGS = -g -O3 -Wall -qopenmp -shared-intel -qopt-streaming-stores always -march=native -ffast-math \
-				 -I$(HOME)/work/stampede2/install/fftw-3.3.8/include \
-				 -I./qphix-wrapper
+				 -I$(HOME)/work/stampede2/install/fftw-3.3.8/include
 LIBS = -lfftw3_omp -lfftw3 -mkl \
 			 -lqphix-wrapper \
 			 -lqphix_solver -lqphix_codegen $(shell $(QDPCONFIG) --libs) 
@@ -17,7 +16,8 @@ LDFLAGS = -L$(HOME)/work/stampede2/install/fftw-3.3.8/lib \
 qc: color_tensor.o gamma_container.o main.o read_prop.o \
 	run_baryon_2pt.o run_dibaryon_2pt.o \
 	run_3pt.o run_sigma_3pt.o run_nnpp_3pt.o \
-	run_4pt.o run_sigma_4pt.o run_nnpp_4pt.o
+	run_4pt.o run_sigma_4pt.o run_nnpp_4pt.o \
+	tensor_contractions.o
 	$(CC) $(CFLAGS) *.o $(LDFLAGS) $(LIBS) 
 
 %.o : %.C

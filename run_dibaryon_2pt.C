@@ -2,10 +2,24 @@
 #include "gamma_container.h"
 #include "color_tensor.h"
 
-// 2-point correlator for a nucleon
+/*
+ * This code computes the 2-point correlation function for a pair
+ * of identical nucleons (i.e. an isospin-1 state).  As with the
+ * single baryon 2-point function code, it accepts a 4x4 spin matrix
+ * as the propagator from source to sink and fills the correlator corr.
+ * This code is not optimized (in particular, it performs all the
+ * multiplications as 4x4 matrices even though all are positive parity
+ * projected), but it is a sub-percent contribution to the total
+ * code runtime, in part because it is only computed on a sparse
+ * grid of points at the sink.
+ * Unlike the single nucleon case, only the positive parity projected
+ * version is given here.
+ */
+
+// 2-point correlator for a pair of nucleons projected to positive parity
 void run_dineutron_correlator_PP(SpinMat * prop, Vcomplex * corr, int nt, int nx, int block_size) {
   for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int t = 0; t < nt; t ++) {
     for (int z = 0; z < nx; z += block_size) {
       for (int y = 0; y < nx; y += block_size) {

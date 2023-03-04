@@ -2,10 +2,24 @@
 #include "gamma_container.h"
 #include "color_tensor.h"
 
+/*
+ * This file contains the contractions to compute single-nucleon 2-point functions
+ * Both of them take a single propagator from source to sink
+ * and an argument for the block size at the sink.
+ * Note that the block size at the sink should be the spacing between point sinks
+ * since 3-point and 4-point functions will be divided by these 2-point correlators.
+ * The input propagator is a 4x4 SpinMat (i.e. all spin components are stored
+ * even if it has already been parity projected).
+ * These routines are not optimized but should be a negligible computational
+ * cost compared to the rest of the codebase.
+ */
+
 // 2-point correlator for a nucleon
+// This is not used in the final production code
+// but is included as a reference for testing and comparisons
 void run_neutron_correlator(SpinMat * prop, Vcomplex * corr, int nt, int nx, int block_size) {
   for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int t = 0; t < nt; t ++) {
     for (int z = 0; z < nx; z += block_size) {
       for (int y = 0; y < nx; y += block_size) {
@@ -30,10 +44,15 @@ void run_neutron_correlator(SpinMat * prop, Vcomplex * corr, int nt, int nx, int
   }
 }
 
-// 2-point nucleon correlator with all quarks projected to positive parity
+// The same as above but with explicit projections to positive parity
+// at both source and sink
+// Note that the wall propagators passed here are likely already projected
+// at the source but not at the sink, so this will give a different
+// answer than the previous method.  If we are comparing 3-point and 
+// 4-point functions to these correlators, we want this routine.
 void run_neutron_correlator_PP(SpinMat * prop, Vcomplex * corr, int nt, int nx, int block_size) {
   for (int t = 0; t < nt; t ++) corr[t] = Vcomplex();
-#pragma omp parallel for
+  #pragma omp parallel for
   for (int t = 0; t < nt; t ++) {
     for (int z = 0; z < nx; z += block_size) {
       for (int y = 0; y < nx; y += block_size) {

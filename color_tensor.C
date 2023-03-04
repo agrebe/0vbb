@@ -1,5 +1,16 @@
 #include "color_tensor.h"
 
+/* 
+ * The color structure of a nucleon is the three-index Levi-Cevita tensor.
+ * This is defined by eps^{012} = 1 and is fully antisymmetric in all indices.
+ * A single-nucleon correlator has two nucleon interpolators and needs two tensors
+ * (one at the source and one at the sink).
+ * For dinucleons, we need four epsilon tensors.
+ * The nonzero components of these are precomputed and stored in
+ * color_idx_1 (for one nucleon) and color_idx_2 (two nucleons).
+ * The algorithms are not optimized but only need to be called once.
+ */
+
 int color_idx_1 [36 * 7];
 int color_idx_2 [1296 * 13];
 
