@@ -62,8 +62,8 @@ void run_nnpp_3pt(Vcomplex * T,             // precomputed tensor
       const int& k      = color_idx_2[13*ii+10];
       const int& l      = color_idx_2[13*ii+11];
       const double sign = color_idx_2[13*ii+12];
-      // include auto-generated file of all 3-point contractions
-      #include "run_nnpp_3pt.inc"
+      // include auto-generated file of all nn->pp contractions
+      #include "run_nnpp.inc"
       // there is a symmetry that lets us only compute half the contractions
       // full sum is contractions we have computed times 2
       corr_nnpp_3pt[index] += tmp * 2 * sign;
