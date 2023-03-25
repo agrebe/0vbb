@@ -1,5 +1,11 @@
 #include "gamma_container.h"
 
+/*
+ * This file initializes the gamma matrices in the DeGrand-Rossi basis.
+ * (This is the basis used by chroma and QPhiX.)
+ * These are stored in row-major order as 4x4 matrices.
+ */
+
 SpinMat id, gx, gy, gz, gt, g5, pp, pm, pl, cg5;
 
 void initialize_gammas() {
@@ -35,8 +41,15 @@ void initialize_gammas() {
   cg5.data[11] = Vcomplex(0, -1);
   cg5.data[14] = Vcomplex(0, 1);
 
-  pl.data[10] = Vcomplex(1, 0);
-  pl.data[15] = Vcomplex(1, 0);
+  /*
+   * The left-handed projector only appears in electroweak current insertions.
+   * On the lattice, the vector and axial parts renormalize differently.
+   * For the ensemble used in this calculation, the ratio ZA/ZV was measured
+   * as 1.096 +/- 0.022 (https://arxiv.org/pdf/1611.07452.pdf).
+   * The overall renormalization can be applied post hoc,
+   * but the relative size of ZA and ZV must be applied at runtime.
+   */
+  pl = (id - g5 * 1.096) * 0.5;
 
   for (int i = 0; i < 4; i ++)
     for (int j = 0; j < 4; j ++) 

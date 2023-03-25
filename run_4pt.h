@@ -14,10 +14,9 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
 
 static int dist_sq(int y, int z, int nx);
 
-double nu_prop(int y1, int y2, int y3, int y4, // first point
-               int z1, int z2, int z3, int z4, // second point
-               int nx, int nt,                 // spatial and temporal extent
-               int global_sparsening);         // global sparsening factor
+double nu_prop(int x, int y, int z, int tau,   // separation between current insertions
+                      int nx,                  // spatial extent
+                      int global_sparsening);  // global sparsening factor
 
 int tensor_index(int c1, int c2, int c3, int c4,
                  int s1, int s2, int s3, int s4);

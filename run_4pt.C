@@ -3,6 +3,14 @@
 #include <string.h>
 #include <mkl.h>
 
+/*
+ * This file is the analog of run_3pt.C but for the 4-point functions.
+ * In particular, it contains routines to create sequential propagators
+ * and to combine them into the four-index tensor T that will be used
+ * in constructing the 4-point functions.
+ * It also contains the functions to construct the neutrino propagator.
+ */
+
 // compute sequential propagator through one insertion time
 void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
                    SpinMat * wall_prop,      // source to operator
@@ -16,7 +24,6 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
   SpinMat gmu [4] = {gx, gy, gz, gt};
   SpinMat gmu_pl [4];
   for (int mu = 0; mu < 4; mu ++) gmu_pl[mu] = gmu[mu] * pl;
-  //#pragma omp parallel for collapse(3)
   for (int z = 0; z < nx; z += block_size) {
     for (int y = 0; y < nx; y += block_size) {
       for (int x = 0; x < nx; x += block_size) {
@@ -31,7 +38,10 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
             Hvec[(4 * idx + mu) * 9 + c] = WeylMat();
           for (int c1 = 0; c1 < 3; c1 ++) {
             for (int c3 = 0; c3 < 3; c3 ++) {
-              //SpinMat temp = Sl_wz[3*c1+c3] * gmu_pl[mu];
+              // As with the 3-point functions, we don't need the full SpinMat
+              // but only the 2x2 upper left-hand corner.
+              // Here, the multiplication is written explicitly
+              // in terms of the indices used in the operation.
               SpinMat temp = SpinMat();
               // manual multiply to get temp
               // s1 only needs to go from 0 to 1
@@ -50,10 +60,10 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
                 WeylMat result_mat = *(WeylMat*) result;
                 result_mat = result_mat * 2;
                 Hvec[((idx * 4 + mu) * 3 + c1) * 3 + c2] += result_mat;
-                /*
-                Hvec[((idx * 4 + mu) * 3 + c1) * 3 + c2]
-                    += ExtractWeyl(temp * Sl_xz[3*c3+c2]);
-                */
+                // The net result of this is equivalent to
+                // Hvec[((idx * 4 + mu) * 3 + c1) * 3 + c2]
+                //    += ExtractWeyl(temp * Sl_xz[3*c3+c2]);
+                // but it avoids computing the unnecessary entries
               }
             }
           }
@@ -63,58 +73,81 @@ void assemble_Hvec(WeylMat * Hvec,           // sequential propagator
   }
 }
 
-static int dist_sq(int y, int z, int nx) {
-  int d1 = abs(y - z); 
-  d1 = (d1 < nx - d1) ? d1 : nx - d1; 
-  return d1 * d1; 
+// Take the norm of the vector in a periodic box.
+// Since one can measure a vector length going around the box
+// in either direction, we should take the minimum of these distances.
+#define MIN(a, b) ( (a<b) ? a : b )
+double periodic_norm(int x, int y, int z, int L) {
+  x = MIN(x, L-x);
+  y = MIN(y, L-y);
+  z = MIN(z, L-z);
+  return sqrt(x * x + y * y + z * z);
 }
 
-// neutrino propagator
-double nu_prop(int y1, int y2, int y3, int y4, // first point
-                      int z1, int z2, int z3, int z4, // second point
-                      int nx, int nt,                 // spatial and temporal extent
-                      int global_sparsening) {        // global sparsening factor
-  int distance_sq;
-  distance_sq = dist_sq(y1, z1, nx);
-  distance_sq += dist_sq(y2, z2, nx);
-  distance_sq += dist_sq(y3, z3, nx);
-  // inflate spatial coordinates by global sparsening factor
-  distance_sq *= (global_sparsening * global_sparsening);
+// The finite-volume, zero-mode subtracted neutrino propagator from
+// Eq. (13) of https://arxiv.org/pdf/2012.02083.pdf.
+// In the paper, the momentum sum is infinite and thus singular in the UV.
+// We will regulate the sum by capping momenta at pi/a in each direction.
+// This means that the momentum will be restricted to the first Brillouin zone
+// of the lattice.
+double nu_prop(int x, int y, int z, int tau,   // separation between currents
+                      int nx,                  // spatial extent
+                      int global_sparsening) { // global sparsening factor
+  int nx_full = nx * global_sparsening;
+  double denom = 4 * M_PI * nx_full * nx_full;
+  double sum = 0;
+  // loop over momentum
+  for (int qz = 0; qz < nx_full; qz ++) {
+    for (int qy = 0; qy < nx_full; qy ++) {
+      for (int qx = 0; qx < nx_full; qx ++) {
+        // compute norm of momentum
+        double normq = periodic_norm(qx, qy, qz, nx_full);
+        // remove zero mode
+        if (normq == 0) continue;
 
-  distance_sq += dist_sq(y4, z4, nt);
+        double phase = z * qz + y * qy + x * qx;
+        phase *= 2 * M_PI / nx;
 
-  double prop = (distance_sq == 0) ? 1.0/16 : (1 - exp(-distance_sq * M_PI * M_PI / 4)) / (4 * M_PI * M_PI * distance_sq);
-  return prop;
+        // add contribution to total
+        sum += exp(-normq * tau * 2 * M_PI / (nx_full))
+               * cos(phase) / (denom * normq);
+      }
+    }
+  }
+  return sum;
 }
 
-// return tensor index from colors and spins
-// color runs slower than spin
+// Given a set of color and spin indices, 
+// return the overall index into the tensor T.
+// Color runs slower than spin here.
 int tensor_index(int c1, int c2, int c3, int c4,
                  int s1, int s2, int s3, int s4) {
   return ((((((c1 * 3 + c2) * 3 + c3) * 3 + c4) * 2 + s1) * 2 + s2) * 2 + s3) * 2 + s4;
-  //return ((((((c1 * 3 + c2) * 2 + s1) * 2 + s2) * 3 + c3) * 3 + c4) * 2 + s3) * 2 + s4;
 }
 
-// compute rank-4 tensor T
-void compute_tensor(Vcomplex * T,
-                    WeylMat * Hvec_x_F,
-                    WeylMat * Hvec_y_F,
-                    fftw_complex * nu_F,
-                    int nx, int nt,
-                    int block_size,
-                    int global_sparsening) {
+// This is the main method to compute the rank-4 tensor T.
+// The inputs are the Fourier-transformed sequential quark propagators
+// and the Fourier-transformed neutrino propagator.
+// The quark propagators carry spin-color indices
+// and also include a loop over the gamma matrix gamma[mu] at the operator.
+void compute_tensor(Vcomplex * T,             // tensor to be computed
+                    WeylMat * Hvec_x_F,       // quark propagator through x
+                    WeylMat * Hvec_y_F,       // quark propagator through y
+                    fftw_complex * nu_F,      // neutrino propagator
+                    int nx, int nt,           // size of lattice
+                    int block_size,           // sparsening at operator
+                    int global_sparsening) {  // global sparsening factor
+  // spatial volume of lattice
   int nx_blocked = nx / block_size;
-
-  // Fourier transform Hvec
   int volume = nx_blocked * nx_blocked * nx_blocked;
-  int num_ffts = 4 * 9 * 4; // mu, color^2, spin^2
-  const int dims [3] = {nx_blocked, nx_blocked, nx_blocked};
 
   // zero out T
   for (int i = 0; i < 1296; i ++)
     T[i] = Vcomplex();
 
-  // precompute Hvec_x times neutrino propagator
+  // Precompute Hvec_x times neutrino propagator
+  // Also pull out only gamma indices mu=0 and mu=2
+  // since these are already linear combinations containing other terms
   WeylMat * Hvec_x_nu = (WeylMat*) malloc(volume * 2 * 9 * sizeof(WeylMat));
   WeylMat * Hvec_y_packed = (WeylMat*) malloc(volume * 2 * 9 * sizeof(WeylMat));
   for (int idp = 0; idp < volume; idp ++) {
@@ -127,8 +160,13 @@ void compute_tensor(Vcomplex * T,
     }
   }
 
-  // integrate over triple product Hvec_x * Hvec_y * nu in momentum space
-  // We can write this as a matrix product and call MKL BLAS
+  // Integrate over triple product Hvec_x * Hvec_y * nu in momentum space.
+  // The tensors Hvec_x_nu and Hvec_y_packed are of dimension (volume * mu)
+  // by (spin-color)^2.  We want to sum over volume and mu and leave the
+  // spin-color pairs as free indices in the final tensor.
+  // This corresponds to a product of two rectangular matrices
+  // (with the volume/mu indices as the inner ones being contracted),
+  // so we can write this as a matrix product and call MKL BLAS.
   Vcomplex alpha (1,0);
   Vcomplex beta (0,0);
   int m = 36, k = volume * 2, n = 36;
@@ -138,11 +176,13 @@ void compute_tensor(Vcomplex * T,
   free(Hvec_x_nu);
   free(Hvec_y_packed);
 
-  // somehow we picked up a factor of V with all the FFTs
+  // The Fourier transforms introduce an extra factor of volume,
+  // so we divide this out here
   for (int i = 0; i < 1296; i ++)
     T[i] *= (1.0 / volume);
 
-  // reorder T so that all color indices run slower than all sink indices
+  // Reorder T so that all color indices run slower than all sink indices
+  // This will allow easier indexing when computing contractions
   Vcomplex * buffer = (Vcomplex *) malloc(4 * 4 * 9 * sizeof(Vcomplex));
   for (int c1 = 0; c1 < 9; c1 ++) {
     memcpy(buffer, T, 4 * 4 * 9 * sizeof(Vcomplex));
@@ -154,6 +194,4 @@ void compute_tensor(Vcomplex * T,
     T += 4 * 4 * 9;
   }
   free(buffer);
-
-  return;
 }

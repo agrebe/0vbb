@@ -1,6 +1,42 @@
 #ifndef SPIN_MAT_H
 #define SPIN_MAT_H
 
+/*
+ * This code defines the arithmetic operations for the three structures
+ * used most frequently in this code
+ * - Vcomplex: a complex double-precision number
+ * - SpinMat: a 4x4 complex double-precision matrix with two free spin indices,
+ *            each of which is a 4-component spinor
+ * - WeylMat: a 2x2 complex double-precision matrix with two free spin indices,
+ *            each of which is a 2-component spinor
+ * 
+ * The arithmetic operations of these structures appear repeatedly,
+ * so they have been optimized to use vector registers.  In particular,
+ * these assume that the machine has AVX-512 vector intrinsics available
+ * (true of Intel Knights Landing and Skylake processors).
+ *
+ * In the original design of the code, the dominant computational cost
+ * was the repeated multiplication of WeylMats inside many nested loops,
+ * so the WeylMat multiplication was heavily optimized for the target
+ * architecture.  Since a 2x2 matrix of complex double-precision numbers
+ * fits exactly in one AVX-512 register, the WeylMat arithmetic operations
+ * can be written in terms of AVX-512 intrinsics, leading to a significant
+ * performance boost.
+ *
+ * The code has been redesigned since this file has been written, and some
+ * of the optimizations are less important than they were in the original
+ * design.  In particular, if this codebase needed to be run on a machine
+ * without AVX-512 instructions, WeylMat could probably be rewritten without
+ * vectorization (or with only AVX-2 intrinsics) at a relatively mild
+ * performance cost.
+ *
+ * In the choice of variable names, the arithmetic operations are assumed
+ * to have C as output and A, B as inputs (e.g. C = A * B).  If one of
+ * the inputs is the variable stored in the struct, that variable is
+ * referred to as A.  In the comments below, a0, a1, ..., refer to
+ * components of A in the vector register.
+ */
+
 #include <immintrin.h>
 
 // structure for complex numbers to take advantage of intrinsics
@@ -68,6 +104,13 @@ static Vcomplex operator*(double r, Vcomplex z) {
   return z * r;
 }
 
+// Structure for 4x4 spin matrices
+// Note: Most of the multiplications involve 2x2 matrices
+// rather than the full 4x4 matrices.
+// As a result, these routines are substantially less optimized
+// than the routines for the 2x2 WeylMats below.
+// In particular, multiplication of two SpinMats is likely to
+// be more than 2^3 = 8x slower than multiplication of two WeylMats.
 struct SpinMat {
   SpinMat() {
     for (int i = 0; i < 16; i ++) data[i] = Vcomplex();
@@ -138,6 +181,8 @@ struct SpinMat {
     return A;
   }
 
+  // Compute the Hermitian conjugate
+  // This is the combined action of complex conjugation and transposition
   SpinMat hconj() {
     SpinMat A;
     for (int a = 0; a < 4; a ++)
@@ -191,7 +236,7 @@ struct WeylMat {
     __m512d factor = _mm512_set1_pd(r);
     return WeylMat(_mm512_mul_pd(data, factor));
   }
-  // TODO: Vectorize this
+  // Note: This is completely unvectorized (and likely slow)
   WeylMat operator*(const Vcomplex z) {
     WeylMat C;
     Vcomplex * data_array = (Vcomplex*)(&data);
@@ -214,18 +259,21 @@ static WeylMat ExtractWeyl(SpinMat S)
 
 // extract a WeylMat in some quadrant of a SpinMat
 // Note: This does not multiply by 2
-static WeylMat ExtractWeyl(SpinMat S, int r, int c)
+// The original ExtractWeyl is equal to 2 * ExtractWeyl(S, 0, 0)
+static WeylMat ExtractSpecificWeyl(SpinMat S, int r, int c)
 {
   Vcomplex data [4] = {S(2*r,2*c), S(2*r,2*c+1), S(2*r+1,2*c), S(2*r+1,2*c+1)};
   return WeylMat(*(__m512d*) &data);
 }
 
+// compute the trace (sum of diagonal entries)
 static Vcomplex Trace(WeylMat mat) {
   Vcomplex * complex_array = (Vcomplex *) &mat;
   return complex_array[0] + complex_array[3];
 }
 
-// horizontal sum of 512-bit register
+// Horizontal sum of 512-bit register
+// This is a helper method in the multiply-and-trace routine below
 static Vcomplex horizontal_sum(__m512d A) {
   __m256d temp_256 = _mm512_extractf64x4_pd(A, 0);
   temp_256 = _mm256_add_pd(temp_256, _mm512_extractf64x4_pd(A, 1));
@@ -234,7 +282,9 @@ static Vcomplex horizontal_sum(__m512d A) {
   return temp_128;
 }
 
-// multiply and trace at once
+// Multiply and trace at once
+// In principle, this could be made faster than separately multiplying and tracing
+// It was not used in this codebase but could be used as an optimization
 static Vcomplex Trace(WeylMat A, WeylMat B) {
   // real part: element-wise multiplication of AB^T
   __m512d B_T = B.transpose().data;
@@ -246,8 +296,11 @@ static Vcomplex Trace(WeylMat A, WeylMat B) {
   __m512d imag_contributions = _mm512_mul_pd(A.data, B_T);
   // permute real and imaginary to get (RIRIRIRI) twice
   // XOR trick negates real_contributions in first line
-  __m512d real_imag = _mm512_unpackhi_pd(_mm512_sub_pd(_mm512_setzero_pd(), real_contributions), imag_contributions);
-  real_imag = _mm512_add_pd(real_imag, _mm512_unpacklo_pd(real_contributions, imag_contributions));
+  __m512d real_imag = _mm512_unpackhi_pd(
+                        _mm512_sub_pd(_mm512_setzero_pd(), real_contributions),
+                        imag_contributions);
+  real_imag = _mm512_add_pd(real_imag, _mm512_unpacklo_pd(real_contributions, 
+                                                          imag_contributions));
   return horizontal_sum(real_imag);
 }
 

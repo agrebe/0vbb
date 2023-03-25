@@ -1,7 +1,6 @@
 #include "spin_mat.h"
 #include "gamma_container.h"
 #include "color_tensor.h"
-#include "run_sigma_4pt.h"
 
 void run_nnpp_3pt(Vcomplex * T,             // precomputed tensor
                   SpinMat * wall_prop,      // source propagator
