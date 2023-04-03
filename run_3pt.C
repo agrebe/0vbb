@@ -43,6 +43,43 @@ void combine_seqprops(Vcomplex * T, int T_shift,
   }
 }
 
+// This is identical to combine_seqprops above,
+// except that it subtracts the product of propagators
+// from T instead of adding the product to T.
+// This is needed for the AT contractions that require one
+// component to have a negative sign relative to the others.
+void combine_seqprops_negative(Vcomplex * T, int T_shift,
+                      WeylMat * seqprop,
+                      int gamma_1, int gamma_2) {
+  int tensor_size = 6 * 6 * 6 * 6; // 4 spin-color indices
+  int seqprop_size = 3 * 3; // 2 color indices
+  Vcomplex * T_shifted = T + T_shift * tensor_size;
+  WeylMat * seqprop_shifted_1 = seqprop + gamma_1 * seqprop_size;
+  WeylMat * seqprop_shifted_2 = seqprop + gamma_2 * seqprop_size;
+  // loop over all the colors
+  for (int c1 = 0; c1 < 3; c1 ++) {
+    for (int c2 = 0; c2 < 3; c2 ++) {
+      for (int c3 = 0; c3 < 3; c3 ++) {
+        for (int c4 = 0; c4 < 3; c4 ++) {
+          // loop over spins
+          for (int s1 = 0; s1 < 2; s1 ++) {
+            for (int s2 = 0; s2 < 2; s2 ++) {
+              for (int s3 = 0; s3 < 2; s3 ++) {
+                for (int s4 = 0; s4 < 2; s4 ++) {
+                  *(T_shifted++)
+                    -= ((Vcomplex*) (seqprop_shifted_1 + c1 * 3 + c2))[s1*2+s2]
+                     * ((Vcomplex*) (seqprop_shifted_2 + c3 * 3 + c4))[s3*2+s4];
+                }
+              }
+            }
+          }
+
+        }
+      }
+    }
+  }
+}
+
 // This is the main method to construct the 4-index tensor.
 // It begins by computing the 16 seqprops with different gamma matrices
 // and then it assembles the necessary pairs into the tensor.
@@ -149,27 +186,29 @@ void compute_tensor_3(Vcomplex * T,
         combine_seqprops(T, 5, seqprop, 0, 5);
         combine_seqprops(T, 6, seqprop, 1, 9);
 
-        // VT and AT contractions
-        // These have the form epsilon^{mu nu rho sigma} V^{nu} T^{rho sigma}
+        // VT contractions
+        // These have the form V^{nu} T^{mu nu}
         // We are interested in the mu = 0 component, so this is
-        // V^1 T^{23} - V^2 T^{13} + V^3 T^{12}
+        // V^1 T^{01} + V^2 T^{02} + V^3 T^{03}
         // indices of components:
         // V^{1,2,3}: 2, 3, 4
+        // T^{01, 02, 03}: 12, 14, 15
+
+        combine_seqprops(T, 7, seqprop, 2, 12);
+        combine_seqprops(T, 7, seqprop, 3, 14);
+        combine_seqprops(T, 7, seqprop, 4, 15);
+
+        // AT contractions
+        // These have the form epsilon^{mu nu rho sigma} A^{nu} T^{rho sigma}
+        // We are interested in the mu = 0 component, so this is
+        // A^1 T^{23} - A^2 T^{13} + A^3 T^{12}
+        // indices of components:
         // A^{1,2,3}: 6, 7, 8
         // T^{23, 13, 12}: 13, 11, 10
 
-        combine_seqprops(T, 7, seqprop, 3, 11);
-        // IMPORTANT: This one gets a minus sign
-        for (int i = 0; i < tensor_size; i ++)
-          T[7 * tensor_size + i] *= -1;
-        combine_seqprops(T, 7, seqprop, 2, 13);
-        combine_seqprops(T, 7, seqprop, 4, 10);
-
-        combine_seqprops(T, 8, seqprop, 7, 11);
-        // IMPORTANT: This one gets a minus sign
-        for (int i = 0; i < tensor_size; i ++)
-          T[8 * tensor_size + i] *= -1;
         combine_seqprops(T, 8, seqprop, 6, 13);
+        // IMPORTANT: This one gets a minus sign
+        combine_seqprops_negative(T, 8, seqprop, 7, 11);
         combine_seqprops(T, 8, seqprop, 8, 10);
       }
     }
