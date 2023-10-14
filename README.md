@@ -29,7 +29,7 @@ For computing propagators rather than reading from disk, the following are also 
 - [QDP++](https://github.com/usqcd-software/qdpxx)
 - [CMake](https://cmake.org/) (required to build QPhiX)
 - [QPhiX](https://github.com/JeffersonLab/qphix)
-- [qphix-wrapper](https://github.com/agrebe/qphix-wrapper) (a wrapper around QPhiX that only exposes the inverters needed for this project)
+- the 0vbb branch of [qphix-wrapper](https://github.com/agrebe/qphix-wrapper/tree/0vbb) (a wrapper around QPhiX that only exposes the inverters needed for this project)
 
 ### Instructions
 
