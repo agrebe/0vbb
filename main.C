@@ -55,7 +55,12 @@ int main(int argc, char ** argv) {
   int spatial_vol = nx * nx * nx;
   
   // electron mass
-  double me = 3.761159784263958e-04;
+  // The physical electron mass (511 keV) at this lattice spacing 
+  // (a = 0.145 fm) would be 3.76e-4 and should be included in a full 
+  // isospin-broken calculation.  Since we instead take m_{nn} = n_{pp}, 
+  // momentum conservation requires me = 0, but this could be included 
+  // in more precise future calculations.
+  double me = 0;
 
   // sparsening factors
   int block_size = 8;         // sparsening at sink
