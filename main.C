@@ -418,6 +418,7 @@ int main(int argc, char ** argv) {
             #pragma omp parallel for collapse(2)
             for (int ty = 3; ty <= sep - 3; ty ++) {
               for (int tx = 3; tx <= sep - 3; tx ++) {
+                if (tx > ty) continue;
                 // grab the values of Hvec_y and Hvec_x corresponding
                 // to operator insertion times of ty and tx
                 WeylMat * Hvec_y = Hvec_F_forward + ty * sparse_vol * 4 * 9;
@@ -497,7 +498,7 @@ int main(int argc, char ** argv) {
     for (int sep = min_sep; sep <= max_sep; sep ++) {
       int tm = (nt + tp - sep) % nt;
       for (int ty = 3; ty <= sep - 3; ty ++) {
-        for (int tx = 3; tx <= sep - 3; tx ++) {
+        for (int tx = 3; tx <= ty; tx ++) {
           Vcomplex corr_sigma_4pt_value = corr_sigma_4pt[(sep * nt + ty) * nt + tx];
           Vcomplex corr_nnpp_4pt_value = corr_nnpp_4pt[(sep * nt + ty) * nt + tx];
           // flip sign if needed for AP boundary conditions
