@@ -146,16 +146,14 @@ void compute_tensor(Vcomplex * T,             // tensor to be computed
     T[i] = Vcomplex();
 
   // Precompute Hvec_x times neutrino propagator
-  // Also pull out only gamma indices mu=0 and mu=2
-  // since these are already linear combinations containing other terms
-  WeylMat * Hvec_x_nu = (WeylMat*) malloc(volume * 2 * 9 * sizeof(WeylMat));
-  WeylMat * Hvec_y_packed = (WeylMat*) malloc(volume * 2 * 9 * sizeof(WeylMat));
+  WeylMat * Hvec_x_nu = (WeylMat*) malloc(volume * 4 * 9 * sizeof(WeylMat));
+  WeylMat * Hvec_y_packed = (WeylMat*) malloc(volume * 4 * 9 * sizeof(WeylMat));
   for (int idp = 0; idp < volume; idp ++) {
     double nu_value = *(double*) (nu_F + idp);
-    for (int mu = 0; mu < 2; mu ++) {
+    for (int mu = 0; mu < 4; mu ++) {
       for (int c = 0; c < 9; c ++) {
-        Hvec_x_nu[(idp * 2 + mu) * 9 + c] = Hvec_x_F[(idp * 4 + mu * 2) * 9 + c] * nu_value;
-        Hvec_y_packed[(idp * 2 + mu) * 9 + c] = Hvec_y_F[(idp * 4 + mu * 2) * 9 + c];
+        Hvec_x_nu[(idp * 4 + mu) * 9 + c] = Hvec_x_F[(idp * 4 + mu) * 9 + c] * nu_value;
+        Hvec_y_packed[(idp * 4 + mu) * 9 + c] = Hvec_y_F[(idp * 4 + mu) * 9 + c];
       }
     }
   }
@@ -169,7 +167,7 @@ void compute_tensor(Vcomplex * T,             // tensor to be computed
   // so we can write this as a matrix product and call MKL BLAS.
   Vcomplex alpha (1,0);
   Vcomplex beta (0,0);
-  int m = 36, k = volume * 2, n = 36;
+  int m = 36, k = volume * 4, n = 36;
   cblas_zgemm(CblasRowMajor, CblasTrans, CblasNoTrans, m, n, k,
       &alpha, Hvec_x_nu, m, Hvec_y_packed, n, &beta, T, n);
   

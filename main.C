@@ -411,45 +411,6 @@ int main(int argc, char ** argv) {
               fftw_execute_dft(Hvec_FFT_backward, (fftw_complex *) (Hvec + offset * ty), 
                                (fftw_complex *) (Hvec_F_backward + offset * ty));
 
-              /*
-               * The hadronic piece of the matrix element is
-               * Hvec_x[mu] * Hvec_y[nu] * S_nu
-               * This is multiplied by the leptonic piece
-               * bar{e_1} gamma_mu P_L gamma_nu C bar{e_2}^T
-               * where C is the charge conjugation operator
-               * and bar{e}^T = gamma_0 * (e^*)
-               * 
-               * Since the electrons are emitted at zero momentum,
-               * conservation of angular momentum forces them to have
-               * opposite spins.  We will take e_1 to be spin up
-               * and e_2 to be spin down.
-               *
-               * In the DeGrand-Rossi basis, the leptonic piece is nonzero
-               * only if mu = nu are both in {0, 1} or both in {2, 3}
-               * The diagonal elements all have coefficient 1
-               * and the off-diagonal terms (i.e. mu = 0, nu = 1)
-               * all have coefficient +/- i.
-               *
-               * We ultimately want to compute something of the form
-               *     Hvec_x[0] * Hvec_y[0] + i Hvec_x[1] * Hvec_y[0]
-               * - i Hvec_x[0] * Hvec_y[1] +   Hvec_x[1] * Hvec_y[1]
-               * plus a similar contribution from the lower two components.
-               * This factorizes nicely as
-               * (Hvec_x[0] + i Hvec_x[1]) * (Hvec_y[0] - i Hvec_y[1])
-               * We precompute these two linear combinations
-               * and store them in Hvec_x[0] and Hvec_y[0]
-               * and then operate similar to obtain Hvec_x[2] and Hvec_y[2].
-               */
-              for (int idy = 0; idy < sparse_vol; idy ++) {
-                for (int c = 0; c < 9; c ++) {
-                  WeylMat * Hvec_y = Hvec_F_forward + offset * ty;
-                  Hvec_y[(4*idy+0)*9+c] += Hvec_y[(4*idy+1)*9+c] * Vcomplex(0,-1);
-                  Hvec_y[(4*idy+2)*9+c] += Hvec_y[(4*idy+3)*9+c] * Vcomplex(0, 1);
-                  WeylMat * Hvec_x = Hvec_F_backward + offset * ty;
-                  Hvec_x[(4*idy+0)*9+c] += Hvec_x[(4*idy+1)*9+c] * Vcomplex(0, 1);
-                  Hvec_x[(4*idy+2)*9+c] += Hvec_x[(4*idy+3)*9+c] * Vcomplex(0,-1);
-                }
-              }
             }
             time_4_point_A += omp_get_wtime();
             time_4_point_B -= omp_get_wtime();
