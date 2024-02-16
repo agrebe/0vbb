@@ -1,8 +1,8 @@
 # Neutrinoless Double-Beta Decay
 
-Authors: William Detmold, Zhenghao Fu, Anthony Grebe, David Murphy, and Patrick Oare
+Authors: Zohreh Davoudi, William Detmold, Zhenghao Fu, Anthony V. Grebe, William Jay, David Murphy, Patrick Oare, Phiala E. Shanahan, and Michael L. Wagman
 
-Publications: TBA
+Publications: "Long-Distance Nuclear Matrix Elements for Neutrinoless Double-Beta Decay from Lattice QCD," arXiv:hep-lat/2402.09362
 
 ## Summary
 
